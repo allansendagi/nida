@@ -5,6 +5,7 @@ const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env.local') });
 
 const CATEGORY_MAPPING = {
+  // Home Services
   'pest control service': 'home_services.pest_control',
   'cleaning service': 'home_services.cleaning',
   'house cleaning service': 'home_services.cleaning',
@@ -22,6 +23,15 @@ const CATEGORY_MAPPING = {
   'plant nursery': 'home_services.landscaping',
   'garden center': 'home_services.landscaping',
   'lawn care service': 'home_services.landscaping',
+  // Relocation Services
+  'real estate rental agency': 'relocation.rental',
+  'apartment rental agency': 'relocation.rental',
+  'vacation home rental agency': 'relocation.rental',
+  'condominium rental agency': 'relocation.rental',
+  'short term apartment rental agency': 'relocation.rental',
+  'moving and storage service': 'relocation.moving',
+  'mover': 'relocation.moving',
+  'property management company': 'relocation.property_management',
 };
 
 const FILES = [
@@ -29,6 +39,7 @@ const FILES = [
   'Handyman Services.json',
   'Painting & Renovation.json',
   'Landscaping & Gardening.json',
+  'Home Rental and Moving Companies.json',
 ];
 
 function mapToNidaCategory(categories) {

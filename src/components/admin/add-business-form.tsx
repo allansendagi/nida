@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,29 +10,27 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Alert } from '@/components/ui/alert';
 import { QATAR_ZONES, ZONE_DISPLAY_NAMES, type QatarZone } from '@/types/intent';
 
-const CATEGORIES = [
-  { value: 'home_services.hvac', label: 'HVAC / AC Services' },
-  { value: 'home_services.plumbing', label: 'Plumbing' },
-  { value: 'home_services.electrical', label: 'Electrical' },
-  { value: 'home_services.cleaning', label: 'Cleaning' },
-  { value: 'home_services.pest_control', label: 'Pest Control' },
-  { value: 'home_services.appliance_repair', label: 'Appliance Repair' },
-];
-
-const CAPABILITIES: Record<string, string[]> = {
-  'home_services.hvac': ['repair', 'installation', 'maintenance', 'cleaning'],
-  'home_services.plumbing': ['repair', 'installation', 'emergency', 'drain_cleaning'],
-  'home_services.electrical': ['repair', 'installation', 'wiring', 'emergency'],
-  'home_services.cleaning': ['deep_cleaning', 'regular', 'move_in_out', 'carpet'],
-  'home_services.pest_control': ['general', 'termites', 'rodents', 'insects'],
-  'home_services.appliance_repair': ['washing_machine', 'refrigerator', 'oven', 'dishwasher'],
-};
+interface ServiceCategory {
+  id: string;
+  parent_id: string | null;
+  name: string;
+  description: string;
+  keywords: string[];
+  common_phrases: string[];
+  specifics_to_collect: string[];
+  is_active: boolean;
+  display_order: number;
+}
 
 export function AddBusinessForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const router = useRouter();
+
+  // Categories state
+  const [categories, setCategories] = useState<ServiceCategory[]>([]);
+  const [loadingCategories, setLoadingCategories] = useState(true);
 
   // Form state
   const [displayName, setDisplayName] = useState('');
@@ -46,6 +44,41 @@ export function AddBusinessForm() {
   const [maxPrice, setMaxPrice] = useState('600');
   const [leadTimeHours, setLeadTimeHours] = useState('2');
   const [warrantyDays, setWarrantyDays] = useState('30');
+
+  // Fetch categories from API
+  useEffect(() => {
+    async function fetchCategories() {
+      try {
+        const res = await fetch('/api/categories');
+        const data = await res.json();
+        if (res.ok) {
+          setCategories(data.categories);
+        }
+      } catch (err) {
+        console.error('Failed to fetch categories:', err);
+      } finally {
+        setLoadingCategories(false);
+      }
+    }
+    fetchCategories();
+  }, []);
+
+  // Derive parent categories (subcategories like home_services.hvac)
+  const parentCategories = categories
+    .filter((c) => c.parent_id && !c.specifics_to_collect?.length)
+    .map((c) => ({ value: c.id, label: c.name }));
+
+  // Derive capabilities for selected category
+  const getCapabilitiesForCategory = (categoryId: string): string[] => {
+    // Get leaf categories that are children of this category
+    const leafCategories = categories.filter(
+      (c) => c.parent_id === categoryId && c.specifics_to_collect?.length > 0
+    );
+    // Return just the last part of the id (e.g., 'repair' from 'home_services.hvac.repair')
+    return leafCategories.map((c) => c.id.split('.').pop() || c.id);
+  };
+
+  const capabilities = category ? getCapabilitiesForCategory(category) : [];
 
   const toggleCapability = (cap: string) => {
     setSelectedCapabilities((prev) =>
@@ -105,6 +138,16 @@ export function AddBusinessForm() {
       setLoading(false);
     }
   };
+
+  if (loadingCategories) {
+    return (
+      <Card>
+        <CardContent className="p-8 text-center">
+          <p className="text-gray-500">Loading categories...</p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -167,7 +210,7 @@ export function AddBusinessForm() {
                 <SelectValue placeholder="Select category" />
               </SelectTrigger>
               <SelectContent>
-                {CATEGORIES.map((cat) => (
+                {parentCategories.map((cat) => (
                   <SelectItem key={cat.value} value={cat.value}>
                     {cat.label}
                   </SelectItem>
@@ -176,11 +219,11 @@ export function AddBusinessForm() {
             </Select>
           </div>
 
-          {category && CAPABILITIES[category] && (
+          {category && capabilities.length > 0 && (
             <div className="space-y-2">
               <Label>Capabilities *</Label>
               <div className="flex flex-wrap gap-2">
-                {CAPABILITIES[category].map((cap) => (
+                {capabilities.map((cap) => (
                   <button
                     key={cap}
                     type="button"

@@ -251,29 +251,12 @@ export type IntentStatus =
 // =============================================================================
 // Service Categories
 // =============================================================================
-
-export const SERVICE_CATEGORIES = {
-  'home_services': {
-    'hvac': ['repair', 'installation', 'maintenance', 'cleaning'],
-    'plumbing': ['repair', 'installation', 'emergency', 'drain_cleaning'],
-    'electrical': ['repair', 'installation', 'wiring', 'emergency'],
-    'cleaning': ['deep_cleaning', 'regular', 'move_in_out', 'carpet'],
-    'pest_control': ['general', 'termites', 'rodents', 'insects'],
-    'appliance_repair': ['washing_machine', 'refrigerator', 'oven', 'dishwasher'],
-  },
-  'automotive': {
-    'car_wash': ['exterior', 'interior', 'full_detail'],
-    'maintenance': ['oil_change', 'tire', 'brake', 'battery'],
-    'repair': ['engine', 'transmission', 'body', 'electrical'],
-  },
-  'personal_services': {
-    'beauty': ['haircut', 'spa', 'nails', 'makeup'],
-    'fitness': ['personal_training', 'yoga', 'massage'],
-    'tutoring': ['academic', 'languages', 'music', 'test_prep'],
-  },
-} as const;
-
-// Helper to get flat category list
-export function getCategoryPath(category: keyof typeof SERVICE_CATEGORIES, subCategory: string, service: string): string {
-  return `${category}.${subCategory}.${service}`;
-}
+// Categories are now stored in the database (service_categories table).
+// Fetch them via the /api/categories endpoint.
+// This allows dynamic category management without code changes.
+//
+// Category format: "top_level.subcategory.service"
+// Examples:
+//   - home_services.hvac.repair
+//   - relocation.rental.apartment_search
+//   - personal_services.beauty.haircut

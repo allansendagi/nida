@@ -1,10 +1,42 @@
 import { getAnthropicClient } from './client';
-import { INTAKE_SYSTEM_PROMPT, formatConversationForIntake } from './intake-prompt';
+import {
+  INTAKE_SYSTEM_PROMPT,
+  buildIntakePrompt,
+  formatConversationForIntake,
+} from './intake-prompt';
 import type { AIIntakeResult, IntentDataForIntake } from '@/types/intent';
+import { createServiceClient } from '@/lib/supabase/server';
+import type { ServiceCategory } from '@/app/api/categories/route';
 
 interface ConversationMessage {
   role: 'consumer' | 'assistant';
   content: string;
+}
+
+// Fetch categories from database
+async function fetchCategories(): Promise<ServiceCategory[]> {
+  try {
+    const supabase = createServiceClient();
+    const { data, error } = await supabase
+      .from('service_categories')
+      .select('*')
+      .eq('is_active', true)
+      .not('parent_id', 'is', null)
+      .order('display_order', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching categories:', error);
+      return [];
+    }
+
+    // Filter to leaf categories (those with specifics_to_collect)
+    return (data as ServiceCategory[]).filter(
+      (c) => c.specifics_to_collect && c.specifics_to_collect.length > 0
+    );
+  } catch (error) {
+    console.error('Error fetching categories:', error);
+    return [];
+  }
 }
 
 export async function processIntake(
@@ -12,12 +44,21 @@ export async function processIntake(
 ): Promise<AIIntakeResult> {
   const client = getAnthropicClient();
 
+  // Fetch categories dynamically
+  const categories = await fetchCategories();
+
+  // Use dynamic prompt if categories available, otherwise fall back to static
+  const systemPrompt =
+    categories.length > 0
+      ? buildIntakePrompt(categories)
+      : INTAKE_SYSTEM_PROMPT;
+
   const conversationHistory = formatConversationForIntake(messages);
 
   const response = await client.messages.create({
     model: 'claude-sonnet-4-20250514',
     max_tokens: 1024,
-    system: INTAKE_SYSTEM_PROMPT,
+    system: systemPrompt,
     messages: [
       {
         role: 'user',
@@ -55,7 +96,7 @@ export async function generateClarifyingResponse(
   const response = await client.messages.create({
     model: 'claude-sonnet-4-20250514',
     max_tokens: 256,
-    system: `You are Nida, a friendly AI assistant helping people find home services in Qatar. Keep responses brief and natural.`,
+    system: `You are Nida, a friendly AI assistant helping people find services in Qatar. Keep responses brief and natural.`,
     messages: [
       {
         role: 'user',

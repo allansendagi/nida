@@ -70,6 +70,13 @@ interface LeadsStats {
   followUpDue: number;
 }
 
+interface ServiceCategory {
+  id: string;
+  parent_id: string | null;
+  name: string;
+  description: string;
+}
+
 const STATUS_OPTIONS = [
   { value: 'new', label: 'New', color: 'bg-blue-100 text-blue-800' },
   { value: 'contacted', label: 'Contacted', color: 'bg-yellow-100 text-yellow-800' },
@@ -79,18 +86,6 @@ const STATUS_OPTIONS = [
   { value: 'invalid', label: 'Invalid', color: 'bg-red-100 text-red-800' },
 ];
 
-const CATEGORY_LABELS: Record<string, string> = {
-  'home_services.pest_control': 'Pest Control',
-  'home_services.cleaning': 'Cleaning',
-  'home_services.handyman': 'Handyman',
-  'home_services.appliance_repair': 'Appliance Repair',
-  'home_services.painting': 'Painting',
-  'home_services.landscaping': 'Landscaping',
-  'home_services.hvac': 'HVAC',
-  'home_services.plumbing': 'Plumbing',
-  'home_services.electrical': 'Electrical',
-};
-
 function StatusBadge({ status }: { status: string }) {
   const option = STATUS_OPTIONS.find((o) => o.value === status);
   return (
@@ -98,11 +93,6 @@ function StatusBadge({ status }: { status: string }) {
       {option?.label || status}
     </Badge>
   );
-}
-
-function formatCategory(category: string | null): string {
-  if (!category) return 'Uncategorized';
-  return CATEGORY_LABELS[category] || category.split('.').pop() || category;
 }
 
 export function LeadsList() {
@@ -115,6 +105,9 @@ export function LeadsList() {
   const [editFollowUp, setEditFollowUp] = useState('');
   const [saving, setSaving] = useState(false);
 
+  // Category labels from API
+  const [categoryLabels, setCategoryLabels] = useState<Record<string, string>>({});
+
   // Filters
   const [statusFilter, setStatusFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
@@ -126,6 +119,48 @@ export function LeadsList() {
   const [total, setTotal] = useState(0);
   const [offset, setOffset] = useState(0);
   const limit = 25;
+
+  // Fetch category labels from API
+  useEffect(() => {
+    async function fetchCategories() {
+      try {
+        const res = await fetch('/api/categories');
+        const data = await res.json();
+        if (res.ok && data.categories) {
+          const labels: Record<string, string> = {};
+          data.categories.forEach((cat: ServiceCategory) => {
+            // Build label from parent and name
+            labels[cat.id] = cat.name;
+            // Also handle subcategory format (e.g., 'home_services.hvac' -> 'HVAC')
+            if (cat.parent_id) {
+              labels[cat.id] = cat.name;
+            }
+          });
+          setCategoryLabels(labels);
+        }
+      } catch (err) {
+        console.error('Failed to fetch categories:', err);
+      }
+    }
+    fetchCategories();
+  }, []);
+
+  const formatCategory = useCallback(
+    (category: string | null): string => {
+      if (!category) return 'Uncategorized';
+      // Try exact match
+      if (categoryLabels[category]) return categoryLabels[category];
+      // Try parent category match (e.g., 'home_services.pest_control' -> 'Pest Control')
+      const parts = category.split('.');
+      if (parts.length >= 2) {
+        const subcategory = parts.slice(0, 2).join('.');
+        if (categoryLabels[subcategory]) return categoryLabels[subcategory];
+      }
+      // Fallback to last part formatted
+      return category.split('.').pop()?.replace(/_/g, ' ') || category;
+    },
+    [categoryLabels]
+  );
 
   const fetchStats = useCallback(async () => {
     try {
