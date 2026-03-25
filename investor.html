@@ -1,0 +1,2000 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nida - The Intent Marketplace</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #10b981;
+            --dark: #0f172a;
+            --dark-light: #1e293b;
+            --gray: #64748b;
+            --gray-light: #94a3b8;
+            --light: #f8fafc;
+            --white: #ffffff;
+            --gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%);
+            --gradient-green: linear-gradient(135deg, #10b981 0%, #34d399 100%);
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--dark);
+            color: var(--white);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* Navigation */
+        nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 1rem 2rem;
+            background: rgba(15, 23, 42, 0.9);
+            backdrop-filter: blur(20px);
+            z-index: 1000;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        nav .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 800;
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .logo-arabic {
+            font-size: 1.2rem;
+            margin-left: 0.5rem;
+            opacity: 0.7;
+        }
+
+        nav ul {
+            display: flex;
+            list-style: none;
+            gap: 2rem;
+        }
+
+        nav a {
+            color: var(--gray-light);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+
+        nav a:hover {
+            color: var(--white);
+        }
+
+        /* Hero Section */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 8rem 2rem 4rem;
+            background: radial-gradient(ellipse at top, rgba(99, 102, 241, 0.15) 0%, transparent 50%),
+                        radial-gradient(ellipse at bottom right, rgba(139, 92, 246, 0.1) 0%, transparent 50%);
+        }
+
+        .hero-content {
+            max-width: 900px;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            background: rgba(99, 102, 241, 0.2);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            border-radius: 100px;
+            font-size: 0.85rem;
+            color: var(--primary);
+            margin-bottom: 2rem;
+        }
+
+        .hero h1 {
+            font-size: clamp(2.5rem, 6vw, 4.5rem);
+            font-weight: 800;
+            line-height: 1.1;
+            margin-bottom: 1.5rem;
+            background: linear-gradient(135deg, #fff 0%, #94a3b8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero h1 span {
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            background-clip: text;
+        }
+
+        .hero p {
+            font-size: 1.25rem;
+            color: var(--gray-light);
+            margin-bottom: 3rem;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .hero-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2rem;
+            margin-top: 4rem;
+            padding-top: 4rem;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .hero-stat {
+            text-align: center;
+        }
+
+        .hero-stat .number {
+            font-size: 3rem;
+            font-weight: 800;
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero-stat .label {
+            color: var(--gray-light);
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+        }
+
+        /* Sections */
+        section {
+            padding: 6rem 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 4rem;
+        }
+
+        .section-label {
+            display: inline-block;
+            padding: 0.4rem 1rem;
+            background: rgba(99, 102, 241, 0.1);
+            border-radius: 100px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--primary);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 1rem;
+        }
+
+        .section-title {
+            font-size: clamp(2rem, 4vw, 3rem);
+            font-weight: 800;
+            margin-bottom: 1rem;
+        }
+
+        .section-subtitle {
+            font-size: 1.1rem;
+            color: var(--gray-light);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* Problem Section */
+        .problem-section {
+            background: linear-gradient(180deg, transparent 0%, rgba(239, 68, 68, 0.05) 50%, transparent 100%);
+        }
+
+        .problem-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 4rem;
+            align-items: center;
+        }
+
+        .problem-content h3 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: #ef4444;
+        }
+
+        .problem-content p {
+            color: var(--gray-light);
+            margin-bottom: 1.5rem;
+        }
+
+        .problem-stats {
+            background: var(--dark-light);
+            border-radius: 1rem;
+            padding: 2rem;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .problem-stat-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 1rem 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .problem-stat-row:last-child {
+            border-bottom: none;
+        }
+
+        .problem-stat-row .label {
+            color: var(--gray-light);
+        }
+
+        .problem-stat-row .value {
+            font-weight: 600;
+            color: #ef4444;
+        }
+
+        .problem-stat-row .value.highlight {
+            font-size: 1.2rem;
+        }
+
+        /* Solution Section */
+        .solution-section {
+            background: linear-gradient(180deg, transparent 0%, rgba(16, 185, 129, 0.05) 50%, transparent 100%);
+        }
+
+        .comparison-box {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 2rem;
+            margin-bottom: 4rem;
+        }
+
+        .comparison-card {
+            background: var(--dark-light);
+            border-radius: 1rem;
+            padding: 2rem;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .comparison-card.old {
+            border-color: rgba(239, 68, 68, 0.3);
+        }
+
+        .comparison-card.new {
+            border-color: rgba(16, 185, 129, 0.3);
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, var(--dark-light) 100%);
+        }
+
+        .comparison-card h4 {
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 1rem;
+            opacity: 0.7;
+        }
+
+        .comparison-card.old h4 { color: #ef4444; }
+        .comparison-card.new h4 { color: #10b981; }
+
+        .comparison-card .flow {
+            font-family: monospace;
+            font-size: 0.9rem;
+            color: var(--gray-light);
+            line-height: 2;
+        }
+
+        .comparison-card .flow span {
+            color: var(--white);
+        }
+
+        /* How It Works */
+        .steps-container {
+            position: relative;
+        }
+
+        .step {
+            display: grid;
+            grid-template-columns: 80px 1fr;
+            gap: 2rem;
+            margin-bottom: 3rem;
+            position: relative;
+        }
+
+        .step-number {
+            width: 60px;
+            height: 60px;
+            background: var(--gradient);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: 700;
+            position: relative;
+            z-index: 1;
+        }
+
+        .step::before {
+            content: '';
+            position: absolute;
+            left: 30px;
+            top: 60px;
+            bottom: -3rem;
+            width: 2px;
+            background: linear-gradient(180deg, var(--primary) 0%, transparent 100%);
+        }
+
+        .step:last-child::before {
+            display: none;
+        }
+
+        .step-content {
+            background: var(--dark-light);
+            border-radius: 1rem;
+            padding: 2rem;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .step-content h4 {
+            font-size: 1.25rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .step-content p {
+            color: var(--gray-light);
+        }
+
+        .step-content .example {
+            background: rgba(0,0,0,0.3);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-top: 1rem;
+            font-family: monospace;
+            font-size: 0.85rem;
+            color: var(--secondary);
+        }
+
+        /* Innovation Stack */
+        .innovation-cards {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2rem;
+        }
+
+        .innovation-card {
+            background: var(--dark-light);
+            border-radius: 1.5rem;
+            padding: 2.5rem;
+            border: 1px solid rgba(255,255,255,0.1);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .innovation-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        }
+
+        .innovation-card .icon {
+            width: 60px;
+            height: 60px;
+            background: var(--gradient);
+            border-radius: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .innovation-card h4 {
+            font-size: 1.25rem;
+            margin-bottom: 1rem;
+        }
+
+        .innovation-card p {
+            color: var(--gray-light);
+            font-size: 0.95rem;
+        }
+
+        .innovation-card ul {
+            margin-top: 1rem;
+            list-style: none;
+        }
+
+        .innovation-card li {
+            padding: 0.5rem 0;
+            color: var(--gray-light);
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .innovation-card li::before {
+            content: '✓';
+            color: var(--secondary);
+            font-weight: bold;
+        }
+
+        /* NOMOS Protocol */
+        .protocol-section {
+            background: linear-gradient(180deg, transparent 0%, rgba(99, 102, 241, 0.05) 50%, transparent 100%);
+        }
+
+        .code-block {
+            background: #0d1117;
+            border-radius: 1rem;
+            padding: 2rem;
+            overflow-x: auto;
+            border: 1px solid rgba(255,255,255,0.1);
+            margin: 2rem 0;
+        }
+
+        .code-block pre {
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.85rem;
+            line-height: 1.8;
+            color: #e6edf3;
+        }
+
+        .code-block .key { color: #7ee787; }
+        .code-block .string { color: #a5d6ff; }
+        .code-block .number { color: #79c0ff; }
+        .code-block .boolean { color: #ff7b72; }
+
+        .protocol-messages {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 1rem;
+            margin: 3rem 0;
+        }
+
+        .protocol-message {
+            background: var(--dark-light);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .protocol-message .name {
+            font-weight: 700;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+            color: var(--primary);
+        }
+
+        .protocol-message .desc {
+            font-size: 0.8rem;
+            color: var(--gray-light);
+        }
+
+        /* Customer Journey */
+        .journey-section {
+            overflow: hidden;
+        }
+
+        .journey-timeline {
+            position: relative;
+            padding: 2rem 0;
+        }
+
+        .journey-phase {
+            background: var(--dark-light);
+            border-radius: 1rem;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            border: 1px solid rgba(255,255,255,0.1);
+            position: relative;
+        }
+
+        .journey-phase::before {
+            content: '';
+            position: absolute;
+            left: 2rem;
+            top: 100%;
+            height: 2rem;
+            width: 2px;
+            background: var(--primary);
+        }
+
+        .journey-phase:last-child::before {
+            display: none;
+        }
+
+        .journey-phase .phase-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .journey-phase .phase-number {
+            width: 40px;
+            height: 40px;
+            background: var(--gradient);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+        }
+
+        .journey-phase .phase-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .journey-phase .messages {
+            background: rgba(0,0,0,0.3);
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+        }
+
+        .journey-phase .message {
+            padding: 0.75rem 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .journey-phase .message:last-child {
+            border-bottom: none;
+        }
+
+        .journey-phase .message .sender {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.25rem;
+        }
+
+        .journey-phase .message .sender.consumer { color: var(--primary); }
+        .journey-phase .message .sender.nida { color: var(--secondary); }
+        .journey-phase .message .sender.business { color: #f59e0b; }
+
+        .journey-phase .message .text {
+            color: var(--gray-light);
+            font-size: 0.95rem;
+        }
+
+        /* Competition */
+        .competition-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--dark-light);
+            border-radius: 1rem;
+            overflow: hidden;
+        }
+
+        .competition-table th,
+        .competition-table td {
+            padding: 1.25rem 1.5rem;
+            text-align: left;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .competition-table th {
+            background: rgba(0,0,0,0.3);
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--gray-light);
+        }
+
+        .competition-table td {
+            font-size: 0.95rem;
+        }
+
+        .competition-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .competition-table .highlight {
+            color: var(--secondary);
+            font-weight: 600;
+        }
+
+        .competition-table .dim {
+            color: var(--gray);
+        }
+
+        /* Business Model */
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2rem;
+            margin: 3rem 0;
+        }
+
+        .pricing-card {
+            background: var(--dark-light);
+            border-radius: 1.5rem;
+            padding: 2.5rem;
+            border: 1px solid rgba(255,255,255,0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .pricing-card.featured {
+            border-color: var(--primary);
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, var(--dark-light) 100%);
+        }
+
+        .pricing-card.featured::before {
+            content: 'POPULAR';
+            position: absolute;
+            top: 1rem;
+            right: -2rem;
+            background: var(--gradient);
+            padding: 0.25rem 2.5rem;
+            font-size: 0.7rem;
+            font-weight: 700;
+            transform: rotate(45deg);
+        }
+
+        .pricing-card .tier {
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--gray-light);
+            margin-bottom: 0.5rem;
+        }
+
+        .pricing-card .price {
+            font-size: 3rem;
+            font-weight: 800;
+            margin-bottom: 0.5rem;
+        }
+
+        .pricing-card .price span {
+            font-size: 1rem;
+            font-weight: 400;
+            color: var(--gray-light);
+        }
+
+        .pricing-card .description {
+            color: var(--gray-light);
+            font-size: 0.9rem;
+            margin-bottom: 2rem;
+            padding-bottom: 2rem;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .pricing-card ul {
+            list-style: none;
+        }
+
+        .pricing-card li {
+            padding: 0.5rem 0;
+            color: var(--gray-light);
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .pricing-card li::before {
+            content: '→';
+            color: var(--secondary);
+        }
+
+        /* Financials */
+        .financials-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 2rem;
+            margin: 3rem 0;
+        }
+
+        .financial-card {
+            background: var(--dark-light);
+            border-radius: 1rem;
+            padding: 2rem;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .financial-card .value {
+            font-size: 2.5rem;
+            font-weight: 800;
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .financial-card .label {
+            color: var(--gray-light);
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+        }
+
+        .timeline-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 3rem 0;
+        }
+
+        .timeline-table th,
+        .timeline-table td {
+            padding: 1rem 1.5rem;
+            text-align: left;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .timeline-table th {
+            background: var(--dark-light);
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--gray-light);
+        }
+
+        .timeline-table td {
+            background: var(--dark-light);
+        }
+
+        .timeline-table .highlight-row td {
+            background: rgba(99, 102, 241, 0.1);
+            font-weight: 600;
+        }
+
+        .timeline-table .mrr {
+            color: var(--secondary);
+            font-weight: 700;
+        }
+
+        /* Dual Path */
+        .dual-path-grid {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            gap: 2rem;
+            align-items: stretch;
+            margin: 3rem 0;
+        }
+
+        .path-card {
+            background: var(--dark-light);
+            border-radius: 1.5rem;
+            padding: 2.5rem;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .path-card h4 {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--primary);
+            margin-bottom: 1rem;
+        }
+
+        .path-card h3 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .path-card p {
+            color: var(--gray-light);
+            margin-bottom: 1.5rem;
+        }
+
+        .path-card .meta {
+            display: grid;
+            gap: 0.75rem;
+        }
+
+        .path-card .meta-item {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .path-card .meta-item .label {
+            color: var(--gray-light);
+        }
+
+        .path-connector {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        .path-connector .line {
+            width: 2px;
+            flex: 1;
+            background: var(--gradient);
+        }
+
+        .path-connector .circle {
+            width: 60px;
+            height: 60px;
+            background: var(--gradient);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-align: center;
+            margin: 1rem 0;
+        }
+
+        /* Tech Stack */
+        .tech-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 2rem;
+            margin: 3rem 0;
+        }
+
+        .tech-item {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            background: var(--dark-light);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .tech-item .icon {
+            width: 50px;
+            height: 50px;
+            background: rgba(99, 102, 241, 0.2);
+            border-radius: 0.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+        }
+
+        .tech-item .info h5 {
+            font-size: 1rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .tech-item .info p {
+            font-size: 0.85rem;
+            color: var(--gray-light);
+        }
+
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            margin: 3rem 0;
+        }
+
+        .status-item {
+            background: var(--dark-light);
+            border-radius: 0.75rem;
+            padding: 1rem 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .status-item .check {
+            width: 24px;
+            height: 24px;
+            background: var(--secondary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+        }
+
+        .status-item .text {
+            font-size: 0.9rem;
+        }
+
+        /* Vision */
+        .vision-timeline {
+            position: relative;
+            padding-left: 3rem;
+        }
+
+        .vision-timeline::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: var(--gradient);
+        }
+
+        .vision-item {
+            position: relative;
+            margin-bottom: 3rem;
+            padding-left: 2rem;
+        }
+
+        .vision-item::before {
+            content: '';
+            position: absolute;
+            left: -3rem;
+            top: 0.5rem;
+            width: 12px;
+            height: 12px;
+            background: var(--primary);
+            border-radius: 50%;
+            border: 3px solid var(--dark);
+        }
+
+        .vision-item .label {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .vision-item h4 {
+            font-size: 1.25rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .vision-item p {
+            color: var(--gray-light);
+        }
+
+        /* CTA Section */
+        .cta-section {
+            text-align: center;
+            padding: 8rem 2rem;
+            background: radial-gradient(ellipse at center, rgba(99, 102, 241, 0.2) 0%, transparent 70%);
+        }
+
+        .cta-section h2 {
+            font-size: clamp(2rem, 5vw, 3.5rem);
+            font-weight: 800;
+            margin-bottom: 1.5rem;
+        }
+
+        .cta-section p {
+            font-size: 1.25rem;
+            color: var(--gray-light);
+            max-width: 600px;
+            margin: 0 auto 3rem;
+        }
+
+        .cta-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 1rem 2.5rem;
+            border-radius: 100px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .btn-primary {
+            background: var(--gradient);
+            color: var(--white);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--white);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(99, 102, 241, 0.3);
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 4rem 2rem;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+
+        footer .logo {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        footer .tagline {
+            color: var(--gray-light);
+            margin-bottom: 2rem;
+        }
+
+        footer .arabic {
+            font-size: 3rem;
+            opacity: 0.3;
+            margin-bottom: 1rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .comparison-box,
+            .innovation-cards,
+            .pricing-grid,
+            .dual-path-grid,
+            .tech-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .protocol-messages {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .financials-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .status-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .problem-grid {
+                grid-template-columns: 1fr;
+            }
+
+            nav ul {
+                display: none;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .hero-stats {
+                grid-template-columns: 1fr;
+            }
+
+            .protocol-messages {
+                grid-template-columns: 1fr;
+            }
+
+            .financials-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .step {
+                grid-template-columns: 1fr;
+            }
+
+            .step-number {
+                margin-bottom: 1rem;
+            }
+
+            .step::before {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav>
+        <div class="container">
+            <div class="logo">NIDA <span class="logo-arabic">نداء</span></div>
+            <ul>
+                <li><a href="#problem">Problem</a></li>
+                <li><a href="#solution">Solution</a></li>
+                <li><a href="#protocol">Protocol</a></li>
+                <li><a href="#business">Business Model</a></li>
+                <li><a href="#financials">Financials</a></li>
+                <li><a href="#vision">Vision</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-content">
+            <div class="badge">NOMOS Protocol v0.1.0 — Live in Production</div>
+            <h1>The Intent Marketplace That <span>Replaces Meta Ads</span></h1>
+            <p>Consumers declare needs via WhatsApp. AI agents match them to businesses autonomously. Pre-qualified leads at 90% lower cost. The first live deployment of executable governance contracts.</p>
+
+            <div class="hero-stats">
+                <div class="hero-stat">
+                    <div class="number">90%</div>
+                    <div class="label">Lower cost per qualified lead vs Meta</div>
+                </div>
+                <div class="hero-stat">
+                    <div class="number">~6 min</div>
+                    <div class="label">From request to confirmed booking</div>
+                </div>
+                <div class="hero-stat">
+                    <div class="number">0%</div>
+                    <div class="label">Wasted impressions</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Problem Section -->
+    <section id="problem" class="problem-section">
+        <div class="section-header">
+            <div class="section-label">The Problem</div>
+            <h2 class="section-title">Meta Ads Are Broken</h2>
+            <p class="section-subtitle">Every small business owner knows the frustration. Most advertising spend is wasted on people who will never convert.</p>
+        </div>
+
+        <div class="problem-grid">
+            <div class="problem-content">
+                <h3>The Waste Is Structural</h3>
+                <p>Meta sells probabilistic targeting — businesses pay to show ads to people who <em>might</em> be interested. Most impressions are wasted. Most clicks are unqualified. The feedback loop is slow and opaque.</p>
+                <p>Meanwhile, consumers searching for services face endless scrolling through Instagram, DMing multiple providers, waiting hours for responses, and zero accountability if the provider doesn't show up.</p>
+                <p><strong>The system is broken for everyone except Meta.</strong></p>
+            </div>
+            <div class="problem-stats">
+                <h4 style="margin-bottom: 1.5rem; color: #ef4444;">Typical Meta Ads Performance</h4>
+                <div class="problem-stat-row">
+                    <span class="label">Monthly spend</span>
+                    <span class="value">2,000–5,000 QAR</span>
+                </div>
+                <div class="problem-stat-row">
+                    <span class="label">Leads generated</span>
+                    <span class="value">30–80</span>
+                </div>
+                <div class="problem-stat-row">
+                    <span class="label">Actually qualified</span>
+                    <span class="value">10–20</span>
+                </div>
+                <div class="problem-stat-row">
+                    <span class="label">Cost per real lead</span>
+                    <span class="value highlight">100–250 QAR</span>
+                </div>
+                <div class="problem-stat-row">
+                    <span class="label">Waste rate</span>
+                    <span class="value highlight">70–80%</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Solution Section -->
+    <section id="solution" class="solution-section">
+        <div class="section-header">
+            <div class="section-label">The Solution</div>
+            <h2 class="section-title">Nida: Demand-First Commerce</h2>
+            <p class="section-subtitle">Invert the funnel. Instead of businesses broadcasting to find customers, customers broadcast needs and the best business responds.</p>
+        </div>
+
+        <div class="comparison-box">
+            <div class="comparison-card old">
+                <h4>Traditional Model (Meta Ads)</h4>
+                <div class="flow">
+                    <span>Business</span> → Broadcast → Hope someone cares → <span>Pay regardless</span>
+                </div>
+            </div>
+            <div class="comparison-card new">
+                <h4>Nida Model</h4>
+                <div class="flow">
+                    <span>Consumer</span> → Declares intent → AI matches → Best provider responds → <span>Pay for results</span>
+                </div>
+            </div>
+        </div>
+
+        <h3 style="text-align: center; margin-bottom: 2rem;">How It Works</h3>
+
+        <div class="steps-container">
+            <div class="step">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <h4>Consumer sends a WhatsApp message</h4>
+                    <p>No app download. No signup. Just describe what you need in natural language.</p>
+                    <div class="example">"I need AC repair in West Bay, my unit is making a clicking noise. Budget around 300-400 QAR, need it fixed this week."</div>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                    <h4>AI structures the intent</h4>
+                    <p>A brief conversational intake (2-3 messages) extracts all the details needed for precise matching.</p>
+                    <div class="example">Category: HVAC Repair | Location: West Bay | Urgency: This week | Budget: 300-400 QAR | Specifics: Clicking noise, still cooling</div>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                    <h4>Automatic matching & scoring</h4>
+                    <p>The platform scores all qualified businesses by category match, zone coverage, price fit, availability, capacity, and trust score.</p>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-number">4</div>
+                <div class="step-content">
+                    <h4>Sequential dispatch</h4>
+                    <p>Top-ranked business gets an exclusive 15-minute window to accept. If they pass or timeout, next in rank gets the offer. This rewards reliability — businesses that respond fast get more leads.</p>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-number">5</div>
+                <div class="step-content">
+                    <h4>Connection and execution</h4>
+                    <p>When a business accepts, consumer gets confirmation with business details, business gets consumer contact. Both connect directly. After service, both rate the experience.</p>
+                    <div class="example">Total time from "my AC is clicking" to confirmed booking: ~6 minutes</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Innovation Stack -->
+    <section id="innovation">
+        <div class="section-header">
+            <div class="section-label">The Innovation</div>
+            <h2 class="section-title">Three Layers of Innovation</h2>
+            <p class="section-subtitle">A complete stack that reimagines how services are discovered, matched, and delivered.</p>
+        </div>
+
+        <div class="innovation-cards">
+            <div class="innovation-card">
+                <div class="icon">💬</div>
+                <h4>WhatsApp as Interface</h4>
+                <p>95% penetration in Qatar. Zero friction onboarding. No app download. The interface they already use 50x/day becomes the commerce layer.</p>
+                <ul>
+                    <li>Send message → Done. You're a user.</li>
+                    <li>Natural language, not forms</li>
+                    <li>Async by default</li>
+                    <li>Built-in trust (verified business)</li>
+                </ul>
+            </div>
+
+            <div class="innovation-card">
+                <div class="icon">🧠</div>
+                <h4>AI-Native Intake</h4>
+                <p>Instead of forcing consumers to fill forms, have a conversation. The AI extracts structured intent from natural language.</p>
+                <ul>
+                    <li>Conversational, not transactional</li>
+                    <li>Clarifying questions when needed</li>
+                    <li>Feels like texting a helpful friend</li>
+                    <li>Structured output for matching</li>
+                </ul>
+            </div>
+
+            <div class="innovation-card">
+                <div class="icon">⚡</div>
+                <h4>NOMOS Protocol</h4>
+                <p>Machine-readable governance contracts that AI agents can parse, evaluate, and negotiate against autonomously.</p>
+                <ul>
+                    <li>Executable service contracts</li>
+                    <li>Autonomous agent negotiation</li>
+                    <li>Governed decision-making</li>
+                    <li>Full audit trails</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <!-- NOMOS Protocol -->
+    <section id="protocol" class="protocol-section">
+        <div class="section-header">
+            <div class="section-label">The Protocol</div>
+            <h2 class="section-title">NOMOS: Executable Governance</h2>
+            <p class="section-subtitle">Every business on Nida doesn't just have a "profile." They have a machine-readable contract that AI agents can parse, evaluate, and negotiate against.</p>
+        </div>
+
+        <div class="code-block">
+            <pre>{
+  <span class="key">"nomos_version"</span>: <span class="string">"0.1.0"</span>,
+  <span class="key">"contract_type"</span>: <span class="string">"service_offering"</span>,
+  <span class="key">"issuer"</span>: {
+    <span class="key">"entity_id"</span>: <span class="string">"biz_ac_cooltech_0042"</span>,
+    <span class="key">"display_name"</span>: <span class="string">"CoolTech AC Services"</span>,
+    <span class="key">"trust_score"</span>: <span class="number">87</span>,
+    <span class="key">"verified"</span>: <span class="boolean">true</span>
+  },
+  <span class="key">"service"</span>: {
+    <span class="key">"category"</span>: <span class="string">"home_services.hvac.repair"</span>,
+    <span class="key">"capabilities"</span>: [<span class="string">"diagnosis"</span>, <span class="string">"repair"</span>, <span class="string">"gas_refill"</span>, <span class="string">"maintenance"</span>]
+  },
+  <span class="key">"pricing"</span>: {
+    <span class="key">"model"</span>: <span class="string">"tiered"</span>,
+    <span class="key">"rules"</span>: [{ <span class="key">"capability"</span>: <span class="string">"repair"</span>, <span class="key">"base"</span>: <span class="number">350</span>, <span class="key">"range"</span>: [<span class="number">200</span>, <span class="number">600</span>] }],
+    <span class="key">"urgency_multiplier"</span>: { <span class="key">"same_day"</span>: <span class="number">1.5</span>, <span class="key">"next_day"</span>: <span class="number">1.2</span> }
+  },
+  <span class="key">"availability"</span>: {
+    <span class="key">"lead_time_hours"</span>: <span class="number">4</span>,
+    <span class="key">"capacity"</span>: { <span class="key">"max_daily_jobs"</span>: <span class="number">6</span>, <span class="key">"current_load"</span>: <span class="number">0.4</span> }
+  },
+  <span class="key">"agent_instructions"</span>: {
+    <span class="key">"auto_accept"</span>: { <span class="key">"enabled"</span>: <span class="boolean">true</span>, <span class="key">"min_price_pct"</span>: <span class="number">85</span> },
+    <span class="key">"escalate_to_human"</span>: { <span class="key">"triggers"</span>: [<span class="string">"price_below_min"</span>, <span class="string">"custom_request"</span>] }
+  }
+}</pre>
+        </div>
+
+        <h3 style="text-align: center; margin: 3rem 0 2rem;">The Agent Protocol</h3>
+        <p style="text-align: center; color: var(--gray-light); margin-bottom: 2rem;">Five message types govern all interactions between consumer and business AI agents.</p>
+
+        <div class="protocol-messages">
+            <div class="protocol-message">
+                <div class="name">DISCOVER</div>
+                <div class="desc">Consumer publishes intent, gets matching contracts</div>
+            </div>
+            <div class="protocol-message">
+                <div class="name">PROPOSE</div>
+                <div class="desc">Propose specific terms (price, date, capability)</div>
+            </div>
+            <div class="protocol-message">
+                <div class="name">COUNTER</div>
+                <div class="desc">Counter-propose within contract rules</div>
+            </div>
+            <div class="protocol-message">
+                <div class="name">ACCEPT</div>
+                <div class="desc">Lock in agreed terms, create execution record</div>
+            </div>
+            <div class="protocol-message">
+                <div class="name">ESCALATE</div>
+                <div class="desc">Hand off to human when rules can't resolve</div>
+            </div>
+        </div>
+
+        <div style="background: var(--dark-light); border-radius: 1rem; padding: 2rem; margin-top: 3rem; border: 1px solid rgba(255,255,255,0.1);">
+            <h4 style="margin-bottom: 1rem;">The Innovation: Governed Autonomy</h4>
+            <p style="color: var(--gray-light);">The <code style="background: rgba(99,102,241,0.2); padding: 0.2rem 0.5rem; border-radius: 0.25rem;">agent_instructions</code> field is the breakthrough. The business sets rules once. Their AI agent operates within those rules without supervision. This is the exact same principle that banks need for autonomous operations — agents executing within deterministic constraints. We're proving it works at the AC repair level, but the infrastructure scales to any complexity.</p>
+        </div>
+    </section>
+
+    <!-- Customer Journey -->
+    <section class="journey-section">
+        <div class="section-header">
+            <div class="section-label">The Experience</div>
+            <h2 class="section-title">Complete Customer Journey</h2>
+            <p class="section-subtitle">From WhatsApp message to confirmed booking in under 6 minutes.</p>
+        </div>
+
+        <div class="journey-timeline">
+            <div class="journey-phase">
+                <div class="phase-header">
+                    <div class="phase-number">1</div>
+                    <div class="phase-title">Intent Capture</div>
+                </div>
+                <div class="messages">
+                    <div class="message">
+                        <div class="sender consumer">Consumer</div>
+                        <div class="text">"I need AC repair in West Bay"</div>
+                    </div>
+                    <div class="message">
+                        <div class="sender nida">Nida</div>
+                        <div class="text">"I can help! Is your AC not cooling at all, or making a noise while running?"</div>
+                    </div>
+                    <div class="message">
+                        <div class="sender consumer">Consumer</div>
+                        <div class="text">"Not cooling, completely stopped"</div>
+                    </div>
+                    <div class="message">
+                        <div class="sender nida">Nida</div>
+                        <div class="text">"Got it — sounds urgent. Do you have a budget in mind?"</div>
+                    </div>
+                    <div class="message">
+                        <div class="sender consumer">Consumer</div>
+                        <div class="text">"Under 500 if possible"</div>
+                    </div>
+                    <div class="message">
+                        <div class="sender nida">Nida</div>
+                        <div class="text">"Perfect. I've found 3 AC technicians available today in West Bay. Notifying the best match now..."</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="journey-phase">
+                <div class="phase-header">
+                    <div class="phase-number">2</div>
+                    <div class="phase-title">Business Notification</div>
+                </div>
+                <div class="messages">
+                    <div class="message">
+                        <div class="sender nida">Nida → CoolTech AC</div>
+                        <div class="text">🔔 New Lead Available!<br><br>Service: AC Repair (not cooling)<br>Location: West Bay<br>Urgency: Same Day<br>Budget: Up to 500 QAR<br><br>Match Score: 92%<br>You are rank #1 of 3 matched businesses.<br><br>⏰ Respond within 15 minutes or lead goes to next provider.<br><br>Reply YES to accept this lead.</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="journey-phase">
+                <div class="phase-header">
+                    <div class="phase-number">3</div>
+                    <div class="phase-title">Acceptance & Connection</div>
+                </div>
+                <div class="messages">
+                    <div class="message">
+                        <div class="sender business">CoolTech AC</div>
+                        <div class="text">"YES"</div>
+                    </div>
+                    <div class="message">
+                        <div class="sender nida">Nida → CoolTech</div>
+                        <div class="text">✅ Lead Confirmed!<br><br>Customer: Ahmed<br>Phone: +974 5555 1234<br>Location: West Bay<br><br>Please contact within 30 minutes to schedule.<br>Execution ID: exec_0918374</div>
+                    </div>
+                    <div class="message">
+                        <div class="sender nida">Nida → Consumer</div>
+                        <div class="text">Great news! CoolTech AC Services has accepted your request.<br><br>They will contact you shortly to schedule the repair.<br><br>Business: CoolTech AC Services<br>Rating: ⭐ 4.8 (42 reviews)<br>Warranty: 30 days included</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="journey-phase">
+                <div class="phase-header">
+                    <div class="phase-number">4</div>
+                    <div class="phase-title">Service & Rating</div>
+                </div>
+                <div class="messages">
+                    <div class="message">
+                        <div class="sender nida">Nida → Consumer (24h later)</div>
+                        <div class="text">"How was your AC repair with CoolTech? Reply 1-5: ⭐⭐⭐⭐⭐"</div>
+                    </div>
+                    <div class="message">
+                        <div class="sender consumer">Consumer</div>
+                        <div class="text">"5"</div>
+                    </div>
+                    <div class="message">
+                        <div class="sender nida">System</div>
+                        <div class="text">Rating saved → Trust score updated → Better future matching</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Competition -->
+    <section>
+        <div class="section-header">
+            <div class="section-label">Market Position</div>
+            <h2 class="section-title">Competitive Landscape</h2>
+            <p class="section-subtitle">What exists today and why Nida is different.</p>
+        </div>
+
+        <table class="competition-table">
+            <thead>
+                <tr>
+                    <th>Aspect</th>
+                    <th>Traditional Marketplaces</th>
+                    <th>On-Demand Apps</th>
+                    <th class="highlight">Nida</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Intake</td>
+                    <td class="dim">Forms, dropdowns</td>
+                    <td class="dim">Structured categories</td>
+                    <td class="highlight">Natural language AI</td>
+                </tr>
+                <tr>
+                    <td>Matching</td>
+                    <td class="dim">Show all, consumer picks</td>
+                    <td class="dim">Algorithmic but opaque</td>
+                    <td class="highlight">Automatic scoring, best first</td>
+                </tr>
+                <tr>
+                    <td>Lead distribution</td>
+                    <td class="dim">Blast to all (or auction)</td>
+                    <td class="dim">Assigned by platform</td>
+                    <td class="highlight">Sequential dispatch (fair)</td>
+                </tr>
+                <tr>
+                    <td>Pricing</td>
+                    <td class="dim">Hidden until quote</td>
+                    <td class="dim">Platform-controlled</td>
+                    <td class="highlight">Declared ranges in contract</td>
+                </tr>
+                <tr>
+                    <td>Business data</td>
+                    <td class="dim">Unstructured profiles</td>
+                    <td class="dim">Platform-owned</td>
+                    <td class="highlight">Machine-readable contracts</td>
+                </tr>
+                <tr>
+                    <td>Future</td>
+                    <td class="dim">Stays human-mediated</td>
+                    <td class="dim">Platform-dependent</td>
+                    <td class="highlight">Agent-to-agent ready</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div style="background: var(--dark-light); border-radius: 1rem; padding: 2rem; margin-top: 3rem; border: 1px solid rgba(255,255,255,0.1);">
+            <h4 style="margin-bottom: 1rem;">The Innovation Gap</h4>
+            <p style="color: var(--gray-light); margin-bottom: 1rem;"><strong>Nobody has built the protocol layer.</strong></p>
+            <p style="color: var(--gray-light);">Uber works because rides are simple: Pickup → Dropoff → Price calculated. Home services are complex: What's broken? What's the scope? What's the urgency? What are the terms?</p>
+            <p style="color: var(--secondary); margin-top: 1rem; font-weight: 600;">NOMOS makes complex services machine-readable. That's the moat.</p>
+        </div>
+    </section>
+
+    <!-- Business Model -->
+    <section id="business">
+        <div class="section-header">
+            <div class="section-label">Business Model</div>
+            <h2 class="section-title">Revenue Streams</h2>
+            <p class="section-subtitle">Simple subscription model with multiple expansion levers.</p>
+        </div>
+
+        <div class="pricing-grid">
+            <div class="pricing-card">
+                <div class="tier">Starter</div>
+                <div class="price">150 <span>QAR/mo</span></div>
+                <div class="description">Solo operators, testing the platform</div>
+                <ul>
+                    <li>Up to 15 leads/month</li>
+                    <li>WhatsApp notifications</li>
+                    <li>Basic dashboard</li>
+                    <li>Standard matching priority</li>
+                </ul>
+            </div>
+
+            <div class="pricing-card featured">
+                <div class="tier">Growth</div>
+                <div class="price">400 <span>QAR/mo</span></div>
+                <div class="description">Active businesses seeing ROI</div>
+                <ul>
+                    <li>Unlimited leads</li>
+                    <li>Priority matching (shown first)</li>
+                    <li>Response time analytics</li>
+                    <li>Lead quality breakdown</li>
+                    <li>Category exclusivity option</li>
+                </ul>
+            </div>
+
+            <div class="pricing-card">
+                <div class="tier">Premium</div>
+                <div class="price">800 <span>QAR/mo</span></div>
+                <div class="description">Established businesses, multiple staff</div>
+                <ul>
+                    <li>Everything in Growth</li>
+                    <li>NOMOS auto-pilot (agent responds 24/7)</li>
+                    <li>Conversion analytics</li>
+                    <li>Multi-user dashboard</li>
+                    <li>Featured in AI recommendations</li>
+                </ul>
+            </div>
+        </div>
+
+        <div style="background: var(--dark-light); border-radius: 1rem; padding: 2rem; margin-top: 2rem; border: 1px solid rgba(255,255,255,0.1);">
+            <h4 style="margin-bottom: 1.5rem;">Value Proposition vs Meta Ads</h4>
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 2rem;">
+                <div>
+                    <h5 style="color: #ef4444; margin-bottom: 1rem;">Meta Ads</h5>
+                    <p style="color: var(--gray-light); font-size: 0.9rem;">Monthly spend: 2,000+ QAR<br>Qualified leads: 10-20<br>Cost per qualified lead: 100-250 QAR<br>Waste: 70-80%</p>
+                </div>
+                <div>
+                    <h5 style="color: var(--secondary); margin-bottom: 1rem;">Nida</h5>
+                    <p style="color: var(--gray-light); font-size: 0.9rem;">Monthly spend: 150-800 QAR<br>Qualified leads: All (pre-filtered)<br>Cost per qualified lead: 7-15 QAR<br>Waste: ~0%</p>
+                </div>
+            </div>
+            <p style="color: var(--secondary); margin-top: 1.5rem; font-weight: 600; text-align: center;">A business needs ONE conversion from Nida to pay for a full month.</p>
+        </div>
+
+        <h3 style="text-align: center; margin: 4rem 0 2rem;">Additional Revenue Layers</h3>
+
+        <div class="status-grid" style="grid-template-columns: repeat(2, 1fr);">
+            <div class="status-item" style="flex-direction: column; align-items: flex-start; padding: 1.5rem;">
+                <h5 style="margin-bottom: 0.5rem;">Urgency Fees (Month 2)</h5>
+                <p style="color: var(--gray-light); font-size: 0.85rem;">Consumer pays 10-25 QAR for priority matching</p>
+            </div>
+            <div class="status-item" style="flex-direction: column; align-items: flex-start; padding: 1.5rem;">
+                <h5 style="margin-bottom: 0.5rem;">Booking Fees (Month 4)</h5>
+                <p style="color: var(--gray-light); font-size: 0.85rem;">15-25 QAR per completed booking</p>
+            </div>
+            <div class="status-item" style="flex-direction: column; align-items: flex-start; padding: 1.5rem;">
+                <h5 style="margin-bottom: 0.5rem;">Category Sponsorship (Month 3)</h5>
+                <p style="color: var(--gray-light); font-size: 0.85rem;">Featured placement per category/zone</p>
+            </div>
+            <div class="status-item" style="flex-direction: column; align-items: flex-start; padding: 1.5rem;">
+                <h5 style="margin-bottom: 0.5rem;">Payment Processing (Month 6)</h5>
+                <p style="color: var(--gray-light); font-size: 0.85rem;">2.5% of in-platform transactions</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Financials -->
+    <section id="financials">
+        <div class="section-header">
+            <div class="section-label">Financials</div>
+            <h2 class="section-title">Revenue Projections</h2>
+            <p class="section-subtitle">First revenue in 35 days. Self-funding by Month 6.</p>
+        </div>
+
+        <div class="financials-grid">
+            <div class="financial-card">
+                <div class="value">Week 5</div>
+                <div class="label">First Revenue</div>
+            </div>
+            <div class="financial-card">
+                <div class="value">Week 6</div>
+                <div class="label">Break-even</div>
+            </div>
+            <div class="financial-card">
+                <div class="value">97%</div>
+                <div class="label">Gross Margin</div>
+            </div>
+            <div class="financial-card">
+                <div class="value">~$230K</div>
+                <div class="label">Year 1 Revenue</div>
+            </div>
+        </div>
+
+        <table class="timeline-table">
+            <thead>
+                <tr>
+                    <th>Period</th>
+                    <th>Businesses</th>
+                    <th>Requests/mo</th>
+                    <th>MRR (QAR)</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Weekend</td>
+                    <td>0</td>
+                    <td>0</td>
+                    <td>—</td>
+                    <td>Building</td>
+                </tr>
+                <tr>
+                    <td>Week 1-2</td>
+                    <td>25</td>
+                    <td>30</td>
+                    <td>—</td>
+                    <td>Recruiting + Soft launch</td>
+                </tr>
+                <tr class="highlight-row">
+                    <td>Week 5</td>
+                    <td>40</td>
+                    <td>140</td>
+                    <td class="mrr">1,500</td>
+                    <td>First revenue</td>
+                </tr>
+                <tr>
+                    <td>Week 6-8</td>
+                    <td>55</td>
+                    <td>300</td>
+                    <td class="mrr">4,500</td>
+                    <td>Growth + upsell</td>
+                </tr>
+                <tr class="highlight-row">
+                    <td>Month 3</td>
+                    <td>80</td>
+                    <td>500</td>
+                    <td class="mrr">12,000</td>
+                    <td>Founder cohort converts</td>
+                </tr>
+                <tr>
+                    <td>Month 4</td>
+                    <td>110</td>
+                    <td>700</td>
+                    <td class="mrr">20,000</td>
+                    <td>Category expansion</td>
+                </tr>
+                <tr class="highlight-row">
+                    <td>Month 6</td>
+                    <td>180</td>
+                    <td>1,200</td>
+                    <td class="mrr">40,000</td>
+                    <td>Operational profit</td>
+                </tr>
+                <tr class="highlight-row">
+                    <td>Month 12</td>
+                    <td>400</td>
+                    <td>3,000</td>
+                    <td class="mrr">105,000</td>
+                    <td>Market leader</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem; margin-top: 3rem;">
+            <div style="background: var(--dark-light); border-radius: 1rem; padding: 2rem; text-align: center; border: 1px solid rgba(255,255,255,0.1);">
+                <div style="font-size: 2rem; font-weight: 800; color: var(--secondary);">~$575</div>
+                <div style="color: var(--gray-light); font-size: 0.9rem;">Monthly infra cost</div>
+            </div>
+            <div style="background: var(--dark-light); border-radius: 1rem; padding: 2rem; text-align: center; border: 1px solid rgba(255,255,255,0.1);">
+                <div style="font-size: 2rem; font-weight: 800; color: var(--secondary);">>20x</div>
+                <div style="color: var(--gray-light); font-size: 0.9rem;">LTV/CAC ratio</div>
+            </div>
+            <div style="background: var(--dark-light); border-radius: 1rem; padding: 2rem; text-align: center; border: 1px solid rgba(255,255,255,0.1);">
+                <div style="font-size: 2rem; font-weight: 800; color: var(--secondary);">~$0</div>
+                <div style="color: var(--gray-light); font-size: 0.9rem;">Customer acquisition cost</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Dual Path Strategy -->
+    <section>
+        <div class="section-header">
+            <div class="section-label">Strategy</div>
+            <h2 class="section-title">The Dual Path to NOMOS</h2>
+            <p class="section-subtitle">Nida isn't just a product — it's the proof layer for enterprise NOMOS adoption.</p>
+        </div>
+
+        <div class="dual-path-grid">
+            <div class="path-card">
+                <h4>Path A: Bottom-Up</h4>
+                <h3>Nida Marketplace</h3>
+                <p>Prove NOMOS works with real transactions. Thousands of autonomous matches governed by machine-readable contracts.</p>
+                <div class="meta">
+                    <div class="meta-item">
+                        <span class="label">Sells</span>
+                        <span>Cheaper leads, zero waste</span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="label">Buyer</span>
+                        <span>Local service businesses</span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="label">Price</span>
+                        <span>150-800 QAR/month</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="path-connector">
+                <div class="line"></div>
+                <div class="circle">SHARED<br>PROTOCOL</div>
+                <div class="line"></div>
+            </div>
+
+            <div class="path-card">
+                <h4>Path B: Top-Down</h4>
+                <h3>Enterprise NOMOS</h3>
+                <p>Sell governance infrastructure to banks and institutions. Same protocol, different contract schemas.</p>
+                <div class="meta">
+                    <div class="meta-item">
+                        <span class="label">Sells</span>
+                        <span>Governance, compliance, automation</span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="label">Buyer</span>
+                        <span>Banks, insurance, government</span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="label">Price</span>
+                        <span>$25K-500K per engagement</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div style="background: var(--dark-light); border-radius: 1rem; padding: 2rem; margin-top: 3rem; border: 1px solid rgba(99,102,241,0.3);">
+            <h4 style="margin-bottom: 1rem;">The Bank Pitch Transformation</h4>
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 2rem; margin-top: 1.5rem;">
+                <div>
+                    <h5 style="color: #ef4444; margin-bottom: 0.5rem;">Before Nida (Theoretical)</h5>
+                    <p style="color: var(--gray-light); font-size: 0.9rem; font-style: italic;">"Please let us extract your operational logic and formalize it into governance contracts. Trust us, this will work."</p>
+                </div>
+                <div>
+                    <h5 style="color: var(--secondary); margin-bottom: 0.5rem;">After Nida (Proven)</h5>
+                    <p style="color: var(--gray-light); font-size: 0.9rem; font-style: italic;">"Here's a dashboard showing 10,000 autonomous transactions. 500 businesses publish NOMOS contracts. Here's the audit log. We're offering you the same infrastructure."</p>
+                </div>
+            </div>
+            <p style="text-align: center; margin-top: 1.5rem; color: var(--primary); font-weight: 600;">Not pitching. Showing.</p>
+        </div>
+    </section>
+
+    <!-- What's Built -->
+    <section>
+        <div class="section-header">
+            <div class="section-label">Current Status</div>
+            <h2 class="section-title">What's Built & Working</h2>
+            <p class="section-subtitle">Full platform running in production, ready for business recruitment.</p>
+        </div>
+
+        <div class="status-grid">
+            <div class="status-item">
+                <div class="check">✓</div>
+                <div class="text">WhatsApp webhook</div>
+            </div>
+            <div class="status-item">
+                <div class="check">✓</div>
+                <div class="text">AI intake conversation</div>
+            </div>
+            <div class="status-item">
+                <div class="check">✓</div>
+                <div class="text">Intent structuring</div>
+            </div>
+            <div class="status-item">
+                <div class="check">✓</div>
+                <div class="text">NOMOS contract schema</div>
+            </div>
+            <div class="status-item">
+                <div class="check">✓</div>
+                <div class="text">Business matching (DISCOVER)</div>
+            </div>
+            <div class="status-item">
+                <div class="check">✓</div>
+                <div class="text">Sequential dispatch</div>
+            </div>
+            <div class="status-item">
+                <div class="check">✓</div>
+                <div class="text">Business notifications</div>
+            </div>
+            <div class="status-item">
+                <div class="check">✓</div>
+                <div class="text">Business dashboard</div>
+            </div>
+            <div class="status-item">
+                <div class="check">✓</div>
+                <div class="text">Admin panel</div>
+            </div>
+            <div class="status-item">
+                <div class="check">✓</div>
+                <div class="text">Trust score system</div>
+            </div>
+            <div class="status-item">
+                <div class="check">✓</div>
+                <div class="text">Consumer management</div>
+            </div>
+            <div class="status-item">
+                <div class="check">✓</div>
+                <div class="text">Conversation history</div>
+            </div>
+        </div>
+
+        <h3 style="text-align: center; margin: 3rem 0 2rem;">Tech Stack</h3>
+
+        <div class="tech-grid">
+            <div class="tech-item">
+                <div class="icon">⚛️</div>
+                <div class="info">
+                    <h5>Next.js 14</h5>
+                    <p>Frontend & API routes</p>
+                </div>
+            </div>
+            <div class="tech-item">
+                <div class="icon">🗄️</div>
+                <div class="info">
+                    <h5>Supabase</h5>
+                    <p>PostgreSQL, Auth, Realtime</p>
+                </div>
+            </div>
+            <div class="tech-item">
+                <div class="icon">🧠</div>
+                <div class="info">
+                    <h5>Claude API</h5>
+                    <p>AI intake & processing</p>
+                </div>
+            </div>
+            <div class="tech-item">
+                <div class="icon">💬</div>
+                <div class="info">
+                    <h5>WhatsApp Cloud API</h5>
+                    <p>Consumer interface</p>
+                </div>
+            </div>
+            <div class="tech-item">
+                <div class="icon">▲</div>
+                <div class="info">
+                    <h5>Vercel</h5>
+                    <p>Hosting & deployment</p>
+                </div>
+            </div>
+            <div class="tech-item">
+                <div class="icon">🎨</div>
+                <div class="info">
+                    <h5>Tailwind CSS</h5>
+                    <p>Styling & components</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Vision -->
+    <section id="vision">
+        <div class="section-header">
+            <div class="section-label">Vision</div>
+            <h2 class="section-title">The Agent-to-Agent Future</h2>
+            <p class="section-subtitle">Building infrastructure for autonomous commerce.</p>
+        </div>
+
+        <div class="vision-timeline">
+            <div class="vision-item">
+                <div class="label">Today (MVP)</div>
+                <h4>Human → AI → Protocol → Human</h4>
+                <p>Consumer sends WhatsApp message. AI structures intent. Protocol matches businesses. Business accepts manually.</p>
+            </div>
+
+            <div class="vision-item">
+                <div class="label">Tomorrow (V2)</div>
+                <h4>Human → AI Agent → Protocol → AI Agent</h4>
+                <p>Business sets rules once. Their AI agent handles leads 24/7 autonomously. Auto-accept, auto-negotiate, auto-schedule.</p>
+            </div>
+
+            <div class="vision-item">
+                <div class="label">The Future</div>
+                <h4>AI Agent ↔ NOMOS Protocol ↔ AI Agent</h4>
+                <p>"My home agent schedules all maintenance." "My AC agent negotiates repair before I notice the problem." Agent-to-agent commerce at scale.</p>
+            </div>
+
+            <div class="vision-item">
+                <div class="label">Geographic Expansion</div>
+                <h4>Qatar → UAE → Saudi → GCC</h4>
+                <p>Prove in Doha. Expand to Dubai (Month 12). Riyadh (Month 18). Regional infrastructure layer.</p>
+            </div>
+
+            <div class="vision-item">
+                <div class="label">The Logic Exchange</div>
+                <h4>Marketplace for Governance Contracts</h4>
+                <p>Best-performing AC repair contract in Doha → licensed to Dubai operators. Bank's loan approval logic → licensed to fintechs. Nida is the first inventory source.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta-section">
+        <h2>The Protocol That Handles<br>AC Repairs Today<br>Handles Bank Loans Tomorrow</h2>
+        <p>Nida inverts advertising. NOMOS enables autonomous commerce. We're proving it works with plumbers. We're scaling it to banks.</p>
+        <div class="cta-buttons">
+            <a href="mailto:contact@nida.qa" class="btn btn-primary">Partner With Us</a>
+            <a href="#protocol" class="btn btn-secondary">Learn More</a>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="arabic">نداء</div>
+        <div class="logo">NIDA</div>
+        <div class="tagline">You call. The right one answers.</div>
+        <p style="color: var(--gray); font-size: 0.85rem; margin-top: 2rem;">Building the infrastructure layer for agent-to-agent commerce.</p>
+    </footer>
+
+    <script>
+        // Smooth scroll for navigation
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                document.querySelector(this.getAttribute('href')).scrollIntoView({
+                    behavior: 'smooth'
+                });
+            });
+        });
+
+        // Add scroll effect to nav
+        window.addEventListener('scroll', () => {
+            const nav = document.querySelector('nav');
+            if (window.scrollY > 100) {
+                nav.style.background = 'rgba(15, 23, 42, 0.98)';
+            } else {
+                nav.style.background = 'rgba(15, 23, 42, 0.9)';
+            }
+        });
+    </script>
+</body>
+</html>

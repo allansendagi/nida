@@ -1,0 +1,279 @@
+// NOMOS Protocol Types - Version 0.1.0
+
+export const NOMOS_VERSION = '0.1.0' as const;
+
+// =============================================================================
+// NOMOS Service Contract (.nomos)
+// =============================================================================
+
+export interface NomosIssuer {
+  entity_id: string;
+  display_name: string;
+  trust_score: number;
+  verified: boolean;
+}
+
+export interface NomosServiceConstraints {
+  unit_types?: string[];
+  max_area_sqm?: number;
+  equipment_brands?: string[];
+  [key: string]: unknown;
+}
+
+export interface NomosService {
+  category: string; // e.g., "home_services.hvac.repair"
+  capabilities: string[];
+  constraints?: NomosServiceConstraints;
+}
+
+export interface NomosPricingRule {
+  capability: string;
+  base: number;
+  range: [number, number];
+  negotiable: boolean;
+}
+
+export interface NomosUrgencyMultiplier {
+  same_day?: number;
+  next_day?: number;
+  this_week?: number;
+}
+
+export interface NomosPricing {
+  model: 'fixed' | 'tiered' | 'hourly' | 'quote';
+  currency: string;
+  rules: NomosPricingRule[];
+  urgency_multiplier?: NomosUrgencyMultiplier;
+}
+
+export interface NomosOperatingHours {
+  [day: string]: { open: string; close: string } | 'closed';
+}
+
+export interface NomosCapacity {
+  max_daily_jobs: number;
+  current_load: number; // 0-1 percentage
+}
+
+export interface NomosAvailability {
+  operating_hours: NomosOperatingHours;
+  lead_time_hours: number;
+  capacity: NomosCapacity;
+}
+
+export interface NomosServiceArea {
+  zones: string[];
+  surcharge_zones?: { zone: string; percentage: number }[];
+}
+
+export interface NomosCancellationPolicy {
+  free_cancellation_hours: number;
+  fee_percentage: number;
+}
+
+export interface NomosTerms {
+  warranty_days: number;
+  cancellation_policy: NomosCancellationPolicy;
+}
+
+export interface NomosAutoAcceptConditions {
+  max_price?: number;
+  min_lead_time_hours?: number;
+  zones?: string[];
+}
+
+export interface NomosAgentInstructions {
+  auto_accept: {
+    enabled: boolean;
+    conditions?: NomosAutoAcceptConditions;
+  };
+  escalate_to_human: {
+    triggers: string[];
+  };
+  max_negotiation_rounds?: number;
+}
+
+export interface NomosMetadata {
+  published_at: string;
+  version: number;
+  schema_ref: string;
+}
+
+export interface NomosContract {
+  nomos_version: typeof NOMOS_VERSION;
+  contract_type: 'service_offering';
+  issuer: NomosIssuer;
+  service: NomosService;
+  pricing: NomosPricing;
+  availability: NomosAvailability;
+  service_area: NomosServiceArea;
+  terms: NomosTerms;
+  agent_instructions: NomosAgentInstructions;
+  metadata: NomosMetadata;
+}
+
+// =============================================================================
+// Agent Protocol Message Types
+// =============================================================================
+
+export type ProtocolMessageType =
+  | 'DISCOVER'
+  | 'PROPOSE'
+  | 'COUNTER'
+  | 'ACCEPT'
+  | 'ESCALATE';
+
+export type NegotiationState =
+  | 'discovered'
+  | 'proposed'
+  | 'negotiating'
+  | 'accepted'
+  | 'executing'
+  | 'settled'
+  | 'escalated';
+
+export interface DiscoverMessageData {
+  score: number;
+  rank: number;
+  score_breakdown: ScoreBreakdown;
+}
+
+export interface ProposeMessageData {
+  price: number;
+  date: string;
+  notes?: string;
+}
+
+export interface CounterMessageData {
+  price: number;
+  reason: string;
+  round: number;
+}
+
+export interface AcceptMessageData {
+  execution_id: string;
+  agreed_terms: AgreedTerms;
+}
+
+export interface EscalateMessageData {
+  trigger: string;
+  context: Record<string, unknown>;
+}
+
+export type ProtocolMessageData =
+  | DiscoverMessageData
+  | ProposeMessageData
+  | CounterMessageData
+  | AcceptMessageData
+  | EscalateMessageData;
+
+export interface ProtocolMessage<T extends ProtocolMessageData = ProtocolMessageData> {
+  type: ProtocolMessageType;
+  timestamp: string;
+  data: T;
+}
+
+// =============================================================================
+// Scoring
+// =============================================================================
+
+export interface ScoreBreakdown {
+  category_match: number;
+  zone_match: number;
+  price_fit: number;
+  capacity: number;
+  trust_score: number;
+}
+
+export const SCORE_WEIGHTS = {
+  category_match: 0.30,
+  zone_match: 0.25,
+  price_fit: 0.15,
+  capacity: 0.15,
+  trust_score: 0.15,
+} as const;
+
+// =============================================================================
+// Agreed Terms & Execution
+// =============================================================================
+
+export interface AgreedTerms {
+  price: number;
+  currency: string;
+  date: string;
+  warranty_days: number;
+  payment_method: string;
+  cancellation?: {
+    free_until: string;
+    fee: number;
+  };
+}
+
+export interface ConsumerContact {
+  phone: string;
+  name: string;
+}
+
+// =============================================================================
+// Intent
+// =============================================================================
+
+export interface IntentLocation {
+  zone: string;
+  text?: string;
+  coordinates?: { lat: number; lng: number };
+}
+
+export interface IntentBudget {
+  min?: number;
+  max?: number;
+}
+
+export type IntentUrgency = 'asap' | 'same_day' | 'next_day' | 'this_week' | 'flexible';
+
+export interface IntentData {
+  category: string;
+  location: IntentLocation;
+  budget?: IntentBudget;
+  urgency: IntentUrgency;
+  specifics?: Record<string, unknown>;
+}
+
+export type IntentStatus =
+  | 'intake'
+  | 'structured'
+  | 'matching'
+  | 'negotiating'
+  | 'executing'
+  | 'settled'
+  | 'no_providers';
+
+// =============================================================================
+// Service Categories
+// =============================================================================
+
+export const SERVICE_CATEGORIES = {
+  'home_services': {
+    'hvac': ['repair', 'installation', 'maintenance', 'cleaning'],
+    'plumbing': ['repair', 'installation', 'emergency', 'drain_cleaning'],
+    'electrical': ['repair', 'installation', 'wiring', 'emergency'],
+    'cleaning': ['deep_cleaning', 'regular', 'move_in_out', 'carpet'],
+    'pest_control': ['general', 'termites', 'rodents', 'insects'],
+    'appliance_repair': ['washing_machine', 'refrigerator', 'oven', 'dishwasher'],
+  },
+  'automotive': {
+    'car_wash': ['exterior', 'interior', 'full_detail'],
+    'maintenance': ['oil_change', 'tire', 'brake', 'battery'],
+    'repair': ['engine', 'transmission', 'body', 'electrical'],
+  },
+  'personal_services': {
+    'beauty': ['haircut', 'spa', 'nails', 'makeup'],
+    'fitness': ['personal_training', 'yoga', 'massage'],
+    'tutoring': ['academic', 'languages', 'music', 'test_prep'],
+  },
+} as const;
+
+// Helper to get flat category list
+export function getCategoryPath(category: keyof typeof SERVICE_CATEGORIES, subCategory: string, service: string): string {
+  return `${category}.${subCategory}.${service}`;
+}
