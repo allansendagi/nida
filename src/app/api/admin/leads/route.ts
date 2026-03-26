@@ -51,7 +51,9 @@ export async function GET(request: NextRequest) {
     }
 
     if (search) {
-      query = query.or(`title.ilike.%${search}%,phone.ilike.%${search}%`);
+      // Escape special characters to prevent SQL injection in ilike patterns
+      const escapedSearch = search.replace(/[%_\\]/g, '\\$&');
+      query = query.or(`title.ilike.%${escapedSearch}%,phone.ilike.%${escapedSearch}%`);
     }
 
     // Order by rating (highest first), then by reviews count

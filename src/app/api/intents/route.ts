@@ -1,9 +1,18 @@
 import { NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
+import { requireAdminApi } from '@/lib/auth/admin';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
+  const adminCheck = await requireAdminApi();
+  if (adminCheck.error) {
+    return NextResponse.json(
+      { error: adminCheck.error.message },
+      { status: adminCheck.error.status }
+    );
+  }
+
   try {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');

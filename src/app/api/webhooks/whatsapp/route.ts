@@ -1,6 +1,34 @@
 import { NextResponse } from 'next/server';
 import { processMessage } from '@/lib/conversations/service';
 import { sendWhatsAppReply } from '@/lib/notifications/channels/whatsapp';
+import crypto from 'crypto';
+
+/**
+ * Verify WhatsApp webhook signature using HMAC-SHA256
+ */
+function verifySignature(payload: string, signature: string | null): boolean {
+  const appSecret = process.env.WHATSAPP_APP_SECRET;
+
+  if (!appSecret) {
+    console.error('WHATSAPP_APP_SECRET environment variable is not set');
+    return false;
+  }
+
+  if (!signature) {
+    console.error('Missing X-Hub-Signature-256 header');
+    return false;
+  }
+
+  const expectedSignature = 'sha256=' + crypto
+    .createHmac('sha256', appSecret)
+    .update(payload)
+    .digest('hex');
+
+  return crypto.timingSafeEqual(
+    Buffer.from(signature),
+    Buffer.from(expectedSignature)
+  );
+}
 
 // WhatsApp Webhook Verification (GET)
 export async function GET(request: Request) {
@@ -23,7 +51,17 @@ export async function GET(request: Request) {
 // WhatsApp Message Handler (POST)
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
+    // Get raw body for signature verification
+    const rawBody = await request.text();
+    const signature = request.headers.get('x-hub-signature-256');
+
+    // Verify signature
+    if (!verifySignature(rawBody, signature)) {
+      console.error('Invalid WhatsApp webhook signature');
+      return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+    }
+
+    const body = JSON.parse(rawBody);
 
     // Log incoming webhook for debugging
     console.log('WhatsApp webhook received:', JSON.stringify(body, null, 2));
