@@ -1,4 +1,4 @@
-import type { ServiceCategory } from '@/app/api/categories/route';
+import type { ServiceCategory } from '@/types/database';
 
 // Build dynamic intake prompt from database categories
 export function buildIntakePrompt(categories: ServiceCategory[]): string {

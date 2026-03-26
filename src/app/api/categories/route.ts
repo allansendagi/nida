@@ -1,17 +1,9 @@
 import { NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
+import type { ServiceCategory } from '@/types/database';
 
-interface ServiceCategory {
-  id: string;
-  parent_id: string | null;
-  name: string;
-  description: string;
-  keywords: string[];
-  common_phrases: string[];
-  specifics_to_collect: string[];
-  is_active: boolean;
-  display_order: number;
-}
+// Revalidate cached data every hour
+export const revalidate = 3600;
 
 export async function GET(request: Request) {
   try {
@@ -52,7 +44,14 @@ export async function GET(request: Request) {
       );
     }
 
-    return NextResponse.json({ categories });
+    return NextResponse.json(
+      { categories },
+      {
+        headers: {
+          'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400',
+        },
+      }
+    );
   } catch (error) {
     console.error('Error in GET /api/categories:', error);
     return NextResponse.json(
@@ -62,34 +61,3 @@ export async function GET(request: Request) {
   }
 }
 
-// Helper type for hierarchical categories
-interface CategoryWithChildren extends ServiceCategory {
-  children?: CategoryWithChildren[];
-}
-
-// Helper function to build category tree (not used currently, kept for future use)
-async function buildCategoryTree(
-  categories: ServiceCategory[]
-): Promise<CategoryWithChildren[]> {
-  const categoryMap = new Map<string, CategoryWithChildren>();
-  const roots: CategoryWithChildren[] = [];
-
-  // First pass: create map of all categories
-  for (const cat of categories) {
-    categoryMap.set(cat.id, { ...cat, children: [] });
-  }
-
-  // Second pass: build tree structure
-  for (const cat of categories) {
-    const node = categoryMap.get(cat.id)!;
-    if (cat.parent_id && categoryMap.has(cat.parent_id)) {
-      const parent = categoryMap.get(cat.parent_id)!;
-      parent.children = parent.children || [];
-      parent.children.push(node);
-    } else if (!cat.parent_id) {
-      roots.push(node);
-    }
-  }
-
-  return roots;
-}

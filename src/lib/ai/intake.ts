@@ -6,7 +6,7 @@ import {
 } from './intake-prompt';
 import type { AIIntakeResult, IntentDataForIntake } from '@/types/intent';
 import { createServiceClient } from '@/lib/supabase/server';
-import type { ServiceCategory } from '@/app/api/categories/route';
+import type { ServiceCategory } from '@/types/database';
 
 interface ConversationMessage {
   role: 'consumer' | 'assistant';

@@ -1,6 +1,22 @@
 import type { NomosContract, IntentData, IntentStatus, ProtocolMessage, NegotiationState, AgreedTerms, ConsumerContact, ScoreBreakdown } from './nomos';
 
 // =============================================================================
+// Service Category Types
+// =============================================================================
+
+export interface ServiceCategory {
+  id: string;
+  parent_id: string | null;
+  name: string;
+  description: string;
+  keywords: string[];
+  common_phrases: string[];
+  specifics_to_collect: string[];
+  is_active: boolean;
+  display_order: number;
+}
+
+// =============================================================================
 // Sequential Dispatch Types
 // =============================================================================
 
