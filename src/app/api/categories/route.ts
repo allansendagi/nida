@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
 
-export interface ServiceCategory {
+interface ServiceCategory {
   id: string;
   parent_id: string | null;
   name: string;
@@ -63,12 +63,12 @@ export async function GET(request: Request) {
 }
 
 // Helper type for hierarchical categories
-export interface CategoryWithChildren extends ServiceCategory {
+interface CategoryWithChildren extends ServiceCategory {
   children?: CategoryWithChildren[];
 }
 
-// GET endpoint with ?tree=true returns hierarchical structure
-export async function buildCategoryTree(
+// Helper function to build category tree (not used currently, kept for future use)
+async function buildCategoryTree(
   categories: ServiceCategory[]
 ): Promise<CategoryWithChildren[]> {
   const categoryMap = new Map<string, CategoryWithChildren>();
