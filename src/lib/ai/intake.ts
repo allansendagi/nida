@@ -47,6 +47,14 @@ export async function processIntake(
   // Fetch categories dynamically
   const categories = await fetchCategories();
 
+  // Layer 2: Log category loading status for debugging
+  console.log(`[Intake] Loaded ${categories.length} categories from database`);
+  if (categories.length === 0) {
+    console.warn('[Intake] WARNING: No categories loaded, using fallback prompt');
+  } else {
+    console.log(`[Intake] Categories: ${categories.map(c => c.name).slice(0, 5).join(', ')}...`);
+  }
+
   // Use dynamic prompt if categories available, otherwise fall back to static
   const systemPrompt =
     categories.length > 0
@@ -81,6 +89,21 @@ export async function processIntake(
 
   try {
     const result = JSON.parse(jsonMatch[0]) as AIIntakeResult;
+
+    // Log the AI's categorization for debugging
+    console.log(`[Intake] AI categorized as: ${result.intent_data?.category || 'unknown'}`);
+    console.log(`[Intake] AI confidence: ${result.confidence || 'not specified'}`);
+    console.log(`[Intake] Complete: ${result.complete}`);
+
+    // Layer 3: Add confidence-based clarification
+    // If AI confidence is low and not complete, force a clarifying question
+    if (result.confidence !== undefined && result.confidence < 0.7 && !result.complete) {
+      const categoryName = result.intent_data?.category?.split('.').pop() || 'this service';
+      result.clarifying_question = result.clarifying_question ||
+        `Just to make sure - are you looking for ${categoryName} services?`;
+      console.log(`[Intake] Low confidence (${result.confidence}), added clarifying question`);
+    }
+
     return result;
   } catch {
     throw new Error('Failed to parse AI response as JSON');

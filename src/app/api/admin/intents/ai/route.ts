@@ -146,9 +146,25 @@ export async function POST(request: Request) {
         .eq('id', conversation.id);
 
       // Run DISCOVER
+      console.log(`[AI Route] Running DISCOVER for intent: ${intent.id}`);
+      console.log(`[AI Route] Intent data:`, JSON.stringify(fullIntentData, null, 2));
+
       const { data: businesses } = await supabase.from('businesses').select('*');
+      console.log(`[AI Route] Found ${businesses?.length || 0} businesses in database`);
+
+      // Log business details for debugging
+      if (businesses && businesses.length > 0) {
+        console.log(`[AI Route] Business summary:`);
+        for (const biz of businesses) {
+          console.log(`[AI Route]   - "${biz.display_name}": categories=${JSON.stringify(biz.categories)}, zones=${JSON.stringify(biz.service_zones)}`);
+        }
+      }
+
       let matches = matchBusinessesToIntent(businesses || [], fullIntentData, 5);
+      console.log(`[AI Route] Initial matches: ${matches.length}`);
+
       matches = filterByLeadTime(matches, fullIntentData.urgency);
+      console.log(`[AI Route] After lead time filter: ${matches.length}`);
 
       // Create negotiations - all start as 'pending', only rank #1 will be 'offered'
       const negotiations = [];

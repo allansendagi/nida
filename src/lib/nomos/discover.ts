@@ -21,14 +21,26 @@ export function matchBusinessesToIntent(
   intent: IntentData,
   limit: number = 5
 ): MatchResult[] {
+  console.log(`[DISCOVER] ========== MATCHING START ==========`);
+  console.log(`[DISCOVER] Intent category: ${intent.category}`);
+  console.log(`[DISCOVER] Intent zone: ${intent.location.zone}`);
+  console.log(`[DISCOVER] Total businesses to check: ${businesses.length}`);
+
   const results: Omit<MatchResult, 'rank'>[] = [];
 
   for (const business of businesses) {
+    console.log(`[DISCOVER] --- Checking business: "${business.display_name}" ---`);
+    console.log(`[DISCOVER]   Categories: ${JSON.stringify(business.categories)}`);
+    console.log(`[DISCOVER]   Service zones: ${JSON.stringify(business.service_zones)}`);
+
     const contract = business.nomos_contract as NomosContract;
     const breakdown = calculateScoreBreakdown(contract, intent, business);
 
+    console.log(`[DISCOVER]   Scores: category=${breakdown.category_match.toFixed(2)}, zone=${breakdown.zone_match.toFixed(2)}`);
+
     // Must match category and zone
     if (breakdown.category_match === 0 || breakdown.zone_match === 0) {
+      console.log(`[DISCOVER]   ✗ Skipped (category=${breakdown.category_match}, zone=${breakdown.zone_match})`);
       continue;
     }
 
@@ -45,10 +57,57 @@ export function matchBusinessesToIntent(
         trust_score: Math.round(breakdown.trust_score * 100),
       },
     });
+    console.log(`[DISCOVER]   ✓ Matched with score: ${Math.round(score * 100)}`);
+  }
+
+  // If no exact matches, try parent category fallback
+  if (results.length === 0 && intent.category.includes('.')) {
+    console.log(`[DISCOVER] No exact matches found, trying parent category fallback...`);
+    const parentCategory = intent.category.split('.').slice(0, 2).join('.');
+    console.log(`[DISCOVER] Parent category: ${parentCategory}`);
+
+    for (const business of businesses) {
+      const contract = business.nomos_contract as NomosContract;
+      const businessCategories = business.categories || [];
+
+      // Check if any business category shares the parent
+      const hasParentMatch = businessCategories.some(cat => cat.startsWith(parentCategory));
+      const zoneScore = scoreZoneMatch(contract, intent.location.zone);
+
+      if (hasParentMatch && zoneScore > 0) {
+        console.log(`[DISCOVER]   ✓ Parent fallback match: "${business.display_name}"`);
+        const breakdown: ScoreBreakdown = {
+          category_match: 0.6, // Lower score for fallback match
+          zone_match: zoneScore,
+          price_fit: scorePriceFit(contract, intent.budget),
+          capacity: scoreCapacity(contract),
+          trust_score: scoreTrustScore(business.trust_score),
+        };
+        const score = calculateCompositeScore(breakdown);
+
+        results.push({
+          business,
+          score: Math.round(score * 100),
+          breakdown: {
+            category_match: Math.round(breakdown.category_match * 100),
+            zone_match: Math.round(breakdown.zone_match * 100),
+            price_fit: Math.round(breakdown.price_fit * 100),
+            capacity: Math.round(breakdown.capacity * 100),
+            trust_score: Math.round(breakdown.trust_score * 100),
+          },
+        });
+      }
+    }
   }
 
   // Sort by score descending
   results.sort((a, b) => b.score - a.score);
+
+  console.log(`[DISCOVER] ========== MATCHING COMPLETE ==========`);
+  console.log(`[DISCOVER] Total matches: ${results.length}`);
+  results.slice(0, limit).forEach((r, i) => {
+    console.log(`[DISCOVER]   #${i + 1}: "${r.business.display_name}" (score: ${r.score})`);
+  });
 
   // Add ranks and limit
   return results.slice(0, limit).map((result, index) => ({
@@ -63,7 +122,7 @@ function calculateScoreBreakdown(
   business: Business
 ): ScoreBreakdown {
   return {
-    category_match: scoreCategoryMatch(contract, intent.category),
+    category_match: scoreCategoryMatch(contract, intent.category, business),
     zone_match: scoreZoneMatch(contract, intent.location.zone),
     price_fit: scorePriceFit(contract, intent.budget),
     capacity: scoreCapacity(contract),
@@ -81,19 +140,53 @@ function calculateCompositeScore(breakdown: ScoreBreakdown): number {
   );
 }
 
-function scoreCategoryMatch(contract: NomosContract, intentCategory: string): number {
-  const contractCategory = contract.service.category;
+function scoreCategoryMatch(contract: NomosContract, intentCategory: string, business: Business): number {
+  // Layer 1: Check business.categories[] array first (primary source)
+  const businessCategories = business.categories || [];
   const intentParts = intentCategory.split('.');
-  const contractParts = contractCategory.split('.');
+  const intentParent = intentParts.slice(0, -1).join('.'); // e.g., "home_services.plumbing"
 
-  // Exact match
-  if (contractCategory === intentCategory) {
+  console.log(`[DISCOVER] Scoring category match for business "${business.display_name}"`);
+  console.log(`[DISCOVER]   Intent category: ${intentCategory}`);
+  console.log(`[DISCOVER]   Business categories: ${JSON.stringify(businessCategories)}`);
+
+  // Exact match in categories array
+  if (businessCategories.includes(intentCategory)) {
+    console.log(`[DISCOVER]   ✓ Exact match in business.categories`);
     return 1.0;
   }
 
-  // Check if intent category is within contract's capabilities
-  // e.g., contract: home_services.hvac.repair, intent: home_services.hvac.repair
-  // or contract serves broader category
+  // Parent category match (e.g., intent: plumbing.repair, business has plumbing.emergency)
+  for (const bizCat of businessCategories) {
+    // Check if business category starts with intent parent
+    if (intentParent && bizCat.startsWith(intentParent + '.')) {
+      console.log(`[DISCOVER]   ✓ Parent category match: ${bizCat} shares parent ${intentParent}`);
+      return 0.8;
+    }
+    // Check if intent category starts with business category (business serves broader category)
+    if (intentCategory.startsWith(bizCat + '.')) {
+      console.log(`[DISCOVER]   ✓ Business serves broader category: ${bizCat}`);
+      return 0.85;
+    }
+    // Check partial match at 2 levels (e.g., home_services.plumbing)
+    const bizParts = bizCat.split('.');
+    if (bizParts.length >= 2 && intentParts.length >= 2) {
+      if (bizParts[0] === intentParts[0] && bizParts[1] === intentParts[1]) {
+        console.log(`[DISCOVER]   ✓ Same sub-category match: ${bizParts[0]}.${bizParts[1]}`);
+        return 0.75;
+      }
+    }
+  }
+
+  // Layer 2: Fallback to contract.service.category (legacy)
+  const contractCategory = contract.service.category;
+  const contractParts = contractCategory.split('.');
+
+  // Exact match with contract category
+  if (contractCategory === intentCategory) {
+    console.log(`[DISCOVER]   ✓ Exact match in contract.service.category`);
+    return 1.0;
+  }
 
   // Match up to the specificity level of the contract
   let matchLevel = 0;
@@ -110,12 +203,15 @@ function scoreCategoryMatch(contract: NomosContract, intentCategory: string): nu
     // Check if intent service is in capabilities
     const intentService = intentParts[intentParts.length - 1];
     if (contract.service.capabilities.includes(intentService)) {
+      console.log(`[DISCOVER]   ✓ Capability match: ${intentService}`);
       return 1.0;
     }
     // Partial match
+    console.log(`[DISCOVER]   ~ Partial contract match at level ${matchLevel}`);
     return 0.7;
   }
 
+  console.log(`[DISCOVER]   ✗ No category match found`);
   return 0;
 }
 
