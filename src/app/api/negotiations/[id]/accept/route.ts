@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient, createServiceClient } from '@/lib/supabase/server';
 import { createAcceptMessage, appendMessage } from '@/lib/nomos/protocol';
 import { generateExecutionId } from '@/lib/utils';
+import { sendWhatsAppReply } from '@/lib/notifications/channels/whatsapp';
 import type { AgreedTerms, NomosContract, ProtocolMessage } from '@/types/nomos';
 
 interface Props {
@@ -156,6 +157,18 @@ export async function POST(request: Request, { params }: Props) {
       .update({ offer_state: 'cancelled' })
       .eq('intent_id', intent.id)
       .neq('id', negotiationId);
+
+    // Notify customer that a provider accepted their request
+    const customerPhone = intent.consumer.phone;
+    if (customerPhone) {
+      const serviceType = intent.intent_data.category?.split('.').pop()?.replace(/_/g, ' ') || 'service';
+      const customerMessage = `Great news! ${business.display_name} has accepted your ${serviceType} request and will contact you shortly.`;
+
+      const notifyResult = await sendWhatsAppReply(customerPhone, customerMessage);
+      if (!notifyResult.success) {
+        console.warn('Failed to notify customer:', notifyResult.error);
+      }
+    }
 
     return NextResponse.json({
       success: true,
