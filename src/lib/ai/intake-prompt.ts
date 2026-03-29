@@ -50,6 +50,10 @@ Based on the conversation, determine if you have enough information to create a 
 4. Budget (OPTIONAL)
 5. Specifics (OPTIONAL - details about the problem)
 
+IMPORTANT: Mark "complete": true when you have category + location + urgency.
+Specifics are optional - do NOT ask clarifying questions when all required fields are present.
+Only ask clarifying questions when category OR location is missing.
+
 RESPONSE FORMAT:
 Always respond with valid JSON in this exact format:
 {
@@ -93,13 +97,16 @@ User: "Need AC repair in West Bay urgently"
 Response: {"complete": true, "intent_data": {"category": "home_services.hvac.repair", "location": {"zone": "west_bay"}, "urgency": "asap"}, "confidence": 0.9}
 
 User: "Plumber near Pearl, budget 300-500"
-Response: {"complete": false, "intent_data": {"category": "home_services.plumbing.repair", "location": {"zone": "the_pearl"}, "budget": {"min": 300, "max": 500}, "urgency": "this_week"}, "clarifying_question": "What plumbing issue are you facing - a leak, clogged drain, or something else?", "confidence": 0.7}
+Response: {"complete": true, "intent_data": {"category": "home_services.plumbing.repair", "location": {"zone": "the_pearl"}, "budget": {"min": 300, "max": 500}, "urgency": "this_week"}, "confidence": 0.85}
+
+User: "I need a plumber in West Bay"
+Response: {"complete": true, "intent_data": {"category": "home_services.plumbing.repair", "location": {"zone": "west_bay"}, "urgency": "this_week"}, "confidence": 0.9}
 
 User: "I need a mover"
 Response: {"complete": false, "intent_data": {"category": "relocation.moving.full_service", "urgency": "this_week"}, "clarifying_question": "When do you need to move, and which area are you moving from?", "confidence": 0.5}
 
 User: "Looking for apartment in Lusail"
-Response: {"complete": false, "intent_data": {"category": "relocation.rental.apartment_search", "location": {"zone": "lusail"}, "urgency": "this_week"}, "clarifying_question": "How many bedrooms do you need, and what's your budget?", "confidence": 0.6}
+Response: {"complete": true, "intent_data": {"category": "relocation.rental.apartment_search", "location": {"zone": "lusail"}, "urgency": "this_week"}, "confidence": 0.85}
 
 User: "shifting next week from pearl to lusail, 2 bedroom"
 Response: {"complete": true, "intent_data": {"category": "relocation.moving.full_service", "location": {"zone": "the_pearl", "text": "moving to Lusail"}, "urgency": "this_week", "specifics": {"bedrooms": "2", "destination": "lusail"}}, "confidence": 0.85}
@@ -171,6 +178,10 @@ Based on the conversation, determine if you have enough information to create a 
 4. Budget (OPTIONAL)
 5. Specifics (OPTIONAL - details about the problem)
 
+IMPORTANT: Mark "complete": true when you have category + location + urgency.
+Specifics are optional - do NOT ask clarifying questions when all required fields are present.
+Only ask clarifying questions when category OR location is missing.
+
 RESPONSE FORMAT:
 Always respond with valid JSON in this exact format:
 {
@@ -212,7 +223,10 @@ User: "Need AC repair in West Bay urgently"
 Response: {"complete": true, "intent_data": {"category": "home_services.hvac.repair", "location": {"zone": "west_bay"}, "urgency": "asap"}, "confidence": 0.9}
 
 User: "Plumber near Pearl, budget 300-500"
-Response: {"complete": false, "intent_data": {"category": "home_services.plumbing.repair", "location": {"zone": "the_pearl"}, "budget": {"min": 300, "max": 500}, "urgency": "this_week"}, "clarifying_question": "What plumbing issue are you facing - a leak, clogged drain, or something else?", "confidence": 0.7}
+Response: {"complete": true, "intent_data": {"category": "home_services.plumbing.repair", "location": {"zone": "the_pearl"}, "budget": {"min": 300, "max": 500}, "urgency": "this_week"}, "confidence": 0.85}
+
+User: "I need a plumber in West Bay"
+Response: {"complete": true, "intent_data": {"category": "home_services.plumbing.repair", "location": {"zone": "west_bay"}, "urgency": "this_week"}, "confidence": 0.9}
 `;
 
 export function formatConversationForIntake(messages: Array<{ role: string; content: string }>): string {
