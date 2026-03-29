@@ -128,3 +128,25 @@ export function appendMessage(
 ): ProtocolMessage[] {
   return [...messages, newMessage];
 }
+
+/**
+ * Count the number of COUNTER messages in a negotiation.
+ * Used for enforcing max_negotiation_rounds limit.
+ */
+export function countNegotiationRounds(messages: ProtocolMessage[]): number {
+  return messages.filter((m) => m.type === 'COUNTER').length;
+}
+
+/**
+ * Check if the maximum negotiation rounds have been exceeded.
+ * Returns true if max is defined and current rounds >= max.
+ */
+export function isMaxRoundsExceeded(
+  messages: ProtocolMessage[],
+  maxRounds?: number
+): boolean {
+  if (maxRounds === undefined || maxRounds === null) {
+    return false;
+  }
+  return countNegotiationRounds(messages) >= maxRounds;
+}

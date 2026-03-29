@@ -160,6 +160,39 @@ export interface EscalateMessageData {
   context: Record<string, unknown>;
 }
 
+// =============================================================================
+// Escalation Triggers (Beta)
+// =============================================================================
+
+export type EscalationTrigger =
+  | 'price_below_min'
+  | 'custom_request'
+  | 'dispute'
+  | 'out_of_zone'
+  | 'high_value'
+  | 'first_time_customer'
+  | 'max_rounds_exceeded';
+
+export const ESCALATION_TRIGGER_LABELS: Record<EscalationTrigger, string> = {
+  price_below_min: 'Price below my minimum',
+  custom_request: 'Custom/special requests',
+  dispute: 'Dispute raised',
+  out_of_zone: 'Out of primary zone',
+  high_value: 'High value jobs (>1000 QAR)',
+  first_time_customer: 'First-time customer',
+  max_rounds_exceeded: 'Max negotiation rounds exceeded',
+};
+
+export const ESCALATION_TRIGGER_DESCRIPTIONS: Record<EscalationTrigger, string> = {
+  price_below_min: "Consumer's budget is below your minimum price",
+  custom_request: "Intent has specific requirements outside standard capabilities",
+  dispute: 'A dispute has been raised during negotiation',
+  out_of_zone: 'Location is in your surcharge zones, not primary zones',
+  high_value: 'Job price exceeds 1000 QAR threshold',
+  first_time_customer: 'Consumer has no previous completed jobs',
+  max_rounds_exceeded: 'Too many counter-offers without resolution',
+};
+
 export type ProtocolMessageData =
   | DiscoverMessageData
   | ProposeMessageData

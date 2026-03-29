@@ -16,6 +16,11 @@ export interface NotificationPayload {
   matchRank: number;
   budgetRange?: string;
   claimUrl: string;
+  // Escalation-specific fields
+  escalationTriggers?: string[];
+  escalationReason?: string;
+  // Auto-accept fields
+  autoAccepted?: boolean;
 }
 
 export interface NotificationResult {
