@@ -1,0 +1,8 @@
+export { Navbar } from './Navbar';
+export { Hero } from './Hero';
+export { HowItWorks } from './HowItWorks';
+export { WhyNida } from './WhyNida';
+export { NomosProtocol } from './NomosProtocol';
+export { FAQ } from './FAQ';
+export { FinalCTA } from './FinalCTA';
+export { Footer } from './Footer';

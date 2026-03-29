@@ -1,0 +1,12 @@
+# Large data files
+Allan/
+
+# Build artifacts (Vercel rebuilds these)
+.next/
+node_modules/
+
+# Git
+.git/
+
+# Misc
+*.pack
