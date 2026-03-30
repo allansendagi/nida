@@ -1,7 +1,10 @@
 import { createServiceClient } from '@/lib/supabase/server';
 import { dispatchNotifications } from './dispatcher';
+import { sendEscalationNotification, sendAutoAcceptedNotification } from './escalation';
+import { evaluateAutoAccept, calculateIntentPrice } from '@/lib/nomos/auto-accept';
+import { evaluateEscalation } from '@/lib/nomos/escalation';
 import type { Business, Intent, Negotiation } from '@/types/database';
-import type { IntentUrgency } from '@/types/nomos';
+import type { IntentUrgency, NomosContract, IntentData } from '@/types/nomos';
 
 // =============================================================================
 // Configuration
@@ -107,19 +110,116 @@ export async function startSequentialDispatch(
     return { success: false, error: `Failed to update negotiation: ${updateNegError.message}` };
   }
 
-  // Dispatch notification to rank #1 only
+  // Get the business's NOMOS contract for agent instructions evaluation
+  const business = topNegotiation.business as Business;
+  const contract = business.nomos_contract as NomosContract | null;
+  const intentData = intent.intent_data as IntentData;
+
+  // Evaluate agent instructions if contract exists
+  if (contract && contract.agent_instructions) {
+    // First, check escalation triggers (escalation blocks auto-accept)
+    const escalationResult = evaluateEscalation({
+      contract,
+      intent: intentData,
+      negotiation: topNegotiation as Negotiation,
+      calculatedPrice: calculateIntentPrice(contract, intentData),
+      consumerExecutionCount: await getConsumerExecutionCount(supabase, intent.consumer_id),
+    });
+
+    if (escalationResult.shouldEscalate) {
+      // Escalation triggered - send escalation notification instead of normal dispatch
+      console.log(
+        `Escalation triggered for intent ${intentId}: ${escalationResult.triggers.join(', ')}`
+      );
+
+      await sendEscalationNotification(topNegotiation.id, {
+        triggers: escalationResult.triggers,
+        reason: escalationResult.reason,
+        context: {
+          intent_id: intentId,
+          business_id: business.id,
+        },
+      });
+
+      return {
+        success: true,
+        offeredTo: business.display_name,
+      };
+    }
+
+    // No escalation - check auto-accept
+    const autoAcceptResult = evaluateAutoAccept({
+      contract,
+      intent: intentData,
+      calculatedPrice: calculateIntentPrice(contract, intentData),
+    });
+
+    if (autoAcceptResult.shouldAutoAccept) {
+      console.log(
+        `Auto-accept triggered for intent ${intentId}: ${autoAcceptResult.reason}`
+      );
+
+      // Auto-accept the offer
+      const acceptResult = await acceptOffer(topNegotiation.id);
+
+      if (acceptResult.success) {
+        // Send auto-accepted notification to business
+        await sendAutoAcceptedNotification(topNegotiation.id);
+
+        // Mark negotiation as auto_accepted for analytics
+        await supabase
+          .from('negotiations')
+          .update({ auto_accepted: true })
+          .eq('id', topNegotiation.id);
+
+        return {
+          success: true,
+          offeredTo: business.display_name,
+        };
+      }
+      // If auto-accept failed, fall through to normal dispatch
+    }
+  }
+
+  // Normal dispatch - send notification to rank #1
   const result = await dispatchNotifications([{
     negotiation: topNegotiation as Negotiation,
-    business: topNegotiation.business as Business,
+    business: business,
     intent: intent as Intent,
   }]);
 
-  console.log(`Sequential dispatch started for intent ${intentId}: offered to rank #1 (${topNegotiation.business.display_name}), expires at ${expiresAt.toISOString()}`);
+  console.log(`Sequential dispatch started for intent ${intentId}: offered to rank #1 (${business.display_name}), expires at ${expiresAt.toISOString()}`);
 
   return {
     success: result.sent > 0,
-    offeredTo: topNegotiation.business.display_name,
+    offeredTo: business.display_name,
   };
+}
+
+// =============================================================================
+// Helper Functions
+// =============================================================================
+
+/**
+ * Get the count of completed executions for a consumer.
+ * Used for first_time_customer escalation trigger.
+ */
+async function getConsumerExecutionCount(
+  supabase: ReturnType<typeof createServiceClient>,
+  consumerId: string
+): Promise<number> {
+  const { count, error } = await supabase
+    .from('executions')
+    .select('*', { count: 'exact', head: true })
+    .eq('consumer_id', consumerId)
+    .eq('status', 'completed');
+
+  if (error) {
+    console.error('Error fetching consumer execution count:', error);
+    return 0;
+  }
+
+  return count || 0;
 }
 
 // =============================================================================

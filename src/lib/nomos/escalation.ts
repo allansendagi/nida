@@ -4,7 +4,7 @@ import type {
   ProtocolMessage,
   EscalationTrigger,
 } from '@/types/nomos';
-import type { Negotiation, Execution } from '@/types/database';
+import type { Negotiation } from '@/types/database';
 
 // =============================================================================
 // Escalation Evaluation (Beta Feature)
@@ -40,7 +40,7 @@ const HIGH_VALUE_THRESHOLD = 1000;
  * - first_time_customer: Consumer has no previous executions
  */
 export function evaluateEscalation(ctx: EscalationContext): EscalationResult {
-  const { contract, intent, negotiation, calculatedPrice, consumerExecutionCount } = ctx;
+  const { contract } = ctx;
   const configuredTriggers = contract.agent_instructions.escalate_to_human.triggers;
 
   // If no triggers configured, don't escalate
@@ -177,7 +177,6 @@ function hasCustomRequirements(
   if (specifics.custom_request === true) return true;
 
   // Check for specific requirements that don't match capabilities
-  const capabilities = contract.service.capabilities;
   const constraints = contract.service.constraints;
 
   // Check if requested equipment/brand is not in supported list

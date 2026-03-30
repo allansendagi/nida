@@ -3,7 +3,7 @@ import { dispatchNotifications } from './dispatcher';
 import { TEMPLATES } from './templates';
 import { createEscalateMessage, appendMessage } from '@/lib/nomos/protocol';
 import type { Business, Intent, Negotiation } from '@/types/database';
-import type { IntentData, EscalationTrigger, ProtocolMessage } from '@/types/nomos';
+import type { EscalationTrigger, ProtocolMessage } from '@/types/nomos';
 
 // =============================================================================
 // Escalation Notification Flow (Beta Feature)
@@ -87,9 +87,6 @@ export async function sendEscalationNotification(
   }
 
   // Send priority notification to business
-  const intentData = intent.intent_data as IntentData;
-  const baseUrl = process.env.NEXT_PUBLIC_URL || 'http://localhost:3000';
-
   const result = await dispatchNotifications(
     [{
       negotiation: negotiation as Negotiation,

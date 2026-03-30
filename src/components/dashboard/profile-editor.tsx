@@ -11,9 +11,45 @@ import { Switch } from '@/components/ui/switch';
 import { Alert } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import type { Business } from '@/types/database';
-import type { NomosContract } from '@/types/nomos';
+import type { NomosContract, EscalationTrigger } from '@/types/nomos';
+import { ESCALATION_TRIGGER_LABELS, ESCALATION_TRIGGER_DESCRIPTIONS } from '@/types/nomos';
 import { QATAR_ZONES, ZONE_DISPLAY_NAMES, type QatarZone } from '@/types/intent';
 import { createClient } from '@/lib/supabase/client';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { Info } from 'lucide-react';
+
+// Escalation triggers available for configuration
+const CONFIGURABLE_TRIGGERS: EscalationTrigger[] = [
+  'price_below_min',
+  'custom_request',
+  'out_of_zone',
+  'high_value',
+  'first_time_customer',
+];
+
+// Lead time options in hours
+const LEAD_TIME_OPTIONS = [
+  { value: 0, label: 'No minimum' },
+  { value: 2, label: '2 hours' },
+  { value: 4, label: '4 hours' },
+  { value: 12, label: '12 hours' },
+  { value: 24, label: '24 hours (1 day)' },
+  { value: 48, label: '48 hours (2 days)' },
+  { value: 72, label: '72 hours (3 days)' },
+];
 
 interface ProfileEditorProps {
   business: Business;
@@ -26,12 +62,29 @@ export function ProfileEditor({ business }: ProfileEditorProps) {
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
-  // Form state
+  // Form state - Basic info
   const [displayName, setDisplayName] = useState(contract.issuer.display_name);
   const [selectedZones, setSelectedZones] = useState<string[]>(contract.service_area.zones);
   const [leadTimeHours, setLeadTimeHours] = useState(contract.availability.lead_time_hours);
   const [warrantyDays, setWarrantyDays] = useState(contract.terms.warranty_days);
+
+  // Form state - Agent Instructions (Beta)
   const [autoAccept, setAutoAccept] = useState(contract.agent_instructions.auto_accept.enabled);
+  const [autoAcceptMaxPrice, setAutoAcceptMaxPrice] = useState<number | undefined>(
+    contract.agent_instructions.auto_accept.conditions?.max_price
+  );
+  const [autoAcceptMinLeadTime, setAutoAcceptMinLeadTime] = useState<number>(
+    contract.agent_instructions.auto_accept.conditions?.min_lead_time_hours ?? 0
+  );
+  const [autoAcceptZones, setAutoAcceptZones] = useState<string[]>(
+    contract.agent_instructions.auto_accept.conditions?.zones ?? []
+  );
+  const [escalationTriggers, setEscalationTriggers] = useState<string[]>(
+    contract.agent_instructions.escalate_to_human.triggers
+  );
+  const [maxNegotiationRounds, setMaxNegotiationRounds] = useState<number>(
+    contract.agent_instructions.max_negotiation_rounds ?? 3
+  );
 
   const toggleZone = (zone: string) => {
     setSelectedZones((prev) =>
@@ -49,6 +102,15 @@ export function ProfileEditor({ business }: ProfileEditorProps) {
     try {
       const supabase = createClient();
 
+      // Build auto-accept conditions (only include if enabled)
+      const autoAcceptConditions = autoAccept
+        ? {
+            ...(autoAcceptMaxPrice !== undefined && { max_price: autoAcceptMaxPrice }),
+            ...(autoAcceptMinLeadTime > 0 && { min_lead_time_hours: autoAcceptMinLeadTime }),
+            ...(autoAcceptZones.length > 0 && { zones: autoAcceptZones }),
+          }
+        : undefined;
+
       // Update the contract
       const updatedContract: NomosContract = {
         ...contract,
@@ -57,8 +119,14 @@ export function ProfileEditor({ business }: ProfileEditorProps) {
         availability: { ...contract.availability, lead_time_hours: leadTimeHours },
         terms: { ...contract.terms, warranty_days: warrantyDays },
         agent_instructions: {
-          ...contract.agent_instructions,
-          auto_accept: { ...contract.agent_instructions.auto_accept, enabled: autoAccept },
+          auto_accept: {
+            enabled: autoAccept,
+            conditions: autoAcceptConditions,
+          },
+          escalate_to_human: {
+            triggers: escalationTriggers,
+          },
+          max_negotiation_rounds: maxNegotiationRounds,
         },
         metadata: { ...contract.metadata, version: contract.metadata.version + 1 },
       };
@@ -222,22 +290,186 @@ export function ProfileEditor({ business }: ProfileEditorProps) {
       {/* Agent Settings */}
       <Card>
         <CardHeader>
-          <CardTitle>Agent Settings</CardTitle>
-          <CardDescription>Automation preferences (V2)</CardDescription>
+          <div className="flex items-center gap-2">
+            <CardTitle>Agent Settings</CardTitle>
+            <Badge variant="secondary" className="text-xs">BETA</Badge>
+          </div>
+          <CardDescription>Automation preferences for your AI agent</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
+        <CardContent className="space-y-6">
+          {/* Auto-Accept Section */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label className="text-base">Auto-Accept Leads</Label>
+                <p className="text-xs text-gray-500">
+                  Automatically accept leads that match your criteria
+                </p>
+              </div>
+              <Switch
+                checked={autoAccept}
+                onCheckedChange={setAutoAccept}
+              />
+            </div>
+
+            {/* Auto-Accept Conditions (shown when enabled) */}
+            {autoAccept && (
+              <div className="ml-4 p-4 border rounded-lg bg-gray-50 space-y-4">
+                <p className="text-sm font-medium text-gray-700">
+                  Auto-accept conditions (all must match):
+                </p>
+
+                {/* Max Price */}
+                <div className="space-y-2">
+                  <Label htmlFor="autoAcceptMaxPrice">Max Price (QAR)</Label>
+                  <Input
+                    id="autoAcceptMaxPrice"
+                    type="number"
+                    placeholder="Leave empty for no limit"
+                    value={autoAcceptMaxPrice ?? ''}
+                    onChange={(e) =>
+                      setAutoAcceptMaxPrice(
+                        e.target.value ? parseInt(e.target.value) : undefined
+                      )
+                    }
+                    min={0}
+                  />
+                  <p className="text-xs text-gray-500">
+                    Only auto-accept if the calculated price is below this amount
+                  </p>
+                </div>
+
+                {/* Min Lead Time */}
+                <div className="space-y-2">
+                  <Label htmlFor="autoAcceptMinLeadTime">Minimum Lead Time</Label>
+                  <Select
+                    value={autoAcceptMinLeadTime.toString()}
+                    onValueChange={(v) => v && setAutoAcceptMinLeadTime(parseInt(v))}
+                  >
+                    <SelectTrigger id="autoAcceptMinLeadTime">
+                      <SelectValue placeholder="Select minimum lead time" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {LEAD_TIME_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value.toString()}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-gray-500">
+                    Only auto-accept if the job is scheduled at least this far in advance
+                  </p>
+                </div>
+
+                {/* Zones */}
+                <div className="space-y-2">
+                  <Label>Zones for Auto-Accept</Label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {selectedZones.map((zone) => (
+                      <button
+                        key={zone}
+                        type="button"
+                        onClick={() =>
+                          setAutoAcceptZones((prev) =>
+                            prev.includes(zone)
+                              ? prev.filter((z) => z !== zone)
+                              : [...prev, zone]
+                          )
+                        }
+                        className={`p-2 text-xs rounded-lg border transition-colors ${
+                          autoAcceptZones.includes(zone)
+                            ? 'bg-primary text-primary-foreground border-primary'
+                            : 'bg-white hover:bg-gray-100 border-gray-200'
+                        }`}
+                      >
+                        {ZONE_DISPLAY_NAMES[zone as QatarZone]}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    {autoAcceptZones.length === 0
+                      ? 'Auto-accept for all your service zones'
+                      : `Only auto-accept in: ${autoAcceptZones.length} zone(s)`}
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <Separator />
+
+          {/* Escalation Triggers Section */}
+          <div className="space-y-4">
             <div>
-              <Label>Auto-Accept Leads</Label>
+              <Label className="text-base">Escalation Triggers</Label>
               <p className="text-xs text-gray-500">
-                Automatically accept leads that match your criteria (coming soon)
+                Alert you for manual review in these situations
               </p>
             </div>
-            <Switch
-              checked={autoAccept}
-              onCheckedChange={setAutoAccept}
-              disabled
+
+            <div className="space-y-3">
+              <TooltipProvider>
+                {CONFIGURABLE_TRIGGERS.map((trigger) => (
+                  <div key={trigger} className="flex items-center gap-3">
+                    <Checkbox
+                      id={`trigger-${trigger}`}
+                      checked={escalationTriggers.includes(trigger)}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setEscalationTriggers((prev) => [...prev, trigger]);
+                        } else {
+                          setEscalationTriggers((prev) =>
+                            prev.filter((t) => t !== trigger)
+                          );
+                        }
+                      }}
+                    />
+                    <Label
+                      htmlFor={`trigger-${trigger}`}
+                      className="text-sm font-normal cursor-pointer flex items-center gap-1"
+                    >
+                      {ESCALATION_TRIGGER_LABELS[trigger]}
+                      <Tooltip>
+                        <TooltipTrigger>
+                          <Info className="h-3 w-3 text-gray-400" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="max-w-xs">
+                            {ESCALATION_TRIGGER_DESCRIPTIONS[trigger]}
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </Label>
+                  </div>
+                ))}
+              </TooltipProvider>
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Max Negotiation Rounds */}
+          <div className="space-y-2">
+            <Label htmlFor="maxRounds" className="text-base">
+              Max Negotiation Rounds
+            </Label>
+            <Input
+              id="maxRounds"
+              type="number"
+              value={maxNegotiationRounds}
+              onChange={(e) =>
+                setMaxNegotiationRounds(
+                  Math.min(10, Math.max(1, parseInt(e.target.value) || 3))
+                )
+              }
+              min={1}
+              max={10}
+              className="w-24"
             />
+            <p className="text-xs text-gray-500">
+              Auto-escalate to you after this many counter-offers (1-10)
+            </p>
           </div>
         </CardContent>
       </Card>

@@ -1,4 +1,4 @@
-import type { NomosContract, IntentData, NomosAutoAcceptConditions } from '@/types/nomos';
+import type { NomosContract, IntentData } from '@/types/nomos';
 
 // =============================================================================
 // Auto-Accept Evaluation (Beta Feature)
