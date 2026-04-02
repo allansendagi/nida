@@ -4,7 +4,7 @@ export default function PrivacyPolicy() {
       <h1>Privacy Policy</h1>
       <p><strong>Last updated:</strong> April 2, 2026</p>
       <p>
-        Nida Qatar ("we", "us", or "our") operates a WhatsApp-based home services coordination platform.
+        Nida Qatar (&quot;we&quot;, &quot;us&quot;, or &quot;our&quot;) operates a WhatsApp-based home services coordination platform.
         This Privacy Policy explains how we collect, use, and protect your information.
       </p>
 
