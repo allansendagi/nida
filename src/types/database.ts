@@ -1,4 +1,21 @@
 import type { NomosContract, IntentData, IntentStatus, ProtocolMessage, NegotiationState, AgreedTerms, ConsumerContact, ScoreBreakdown } from './nomos';
+import type {
+  RatingConversationState,
+  RatingStatus,
+  RaterType,
+  CompletionSignalType,
+  ConsumerPriorityTier,
+  InsightPeriodType,
+  ConversationMessage as RatingConversationMessage,
+  ExtractedData,
+  MediaAttachment,
+  RatingDimensions,
+  SentimentData,
+  Badge,
+  ThemeTrend,
+  BusinessInsight,
+  RatingSummary,
+} from '@/lib/ratings/types';
 
 // =============================================================================
 // Service Category Types
@@ -46,6 +63,8 @@ export interface Business {
   notification_preferences: NotificationPreferences;
   created_at: string;
   approval_status: 'pending' | 'approved' | 'rejected';
+  // Rating system v2 fields
+  rating_summary: RatingSummary;
   approval_notes: string | null;
   approved_at: string | null;
   approved_by: string | null;
@@ -61,6 +80,8 @@ export interface Consumer {
   phone: string;
   name: string | null;
   created_at: string;
+  // Rating system v2 fields
+  reputation_id: string | null;
 }
 
 export interface Intent {
@@ -104,6 +125,10 @@ export interface Execution {
   consumer_contact: ConsumerContact | null;
   created_at: string;
   completed_at: string | null;
+  // Rating system v2 fields
+  rating_status: RatingStatus;
+  rating_requested_at: string | null;
+  ratings_revealed_at: string | null;
 }
 
 export interface Conversation {
@@ -130,6 +155,89 @@ export interface Rating {
   consumer_id: string;
   score: number;
   comment: string | null;
+  created_at: string;
+}
+
+// =============================================================================
+// Rating System v2 Types
+// =============================================================================
+
+export interface RatingConversation {
+  id: string;
+  execution_id: string;
+  rater_type: RaterType;
+  rater_id: string;
+  state: RatingConversationState;
+  messages: RatingConversationMessage[];
+  extracted_data: ExtractedData;
+  media_attachments: MediaAttachment[];
+  initiated_at: string | null;
+  completed_at: string | null;
+  last_message_at: string | null;
+  reminder_count: number;
+  next_reminder_at: string | null;
+  created_at: string;
+}
+
+export interface RatingV2 {
+  id: string;
+  execution_id: string;
+  rating_conversation_id: string | null;
+  rater_type: RaterType;
+  rater_id: string;
+  ratee_id: string;
+  overall_score: number;
+  dimensions: RatingDimensions;
+  sentiment: SentimentData;
+  raw_feedback: string | null;
+  photos: string[];
+  voice_note_transcription: string | null;
+  highlight_worthy: boolean;
+  concern_flagged: boolean;
+  revealed_at: string | null;
+  created_at: string;
+}
+
+export interface ConsumerReputation {
+  id: string;
+  consumer_id: string;
+  trust_score: number;
+  clarity_score: number;
+  punctuality_score: number;
+  respect_score: number;
+  payment_score: number;
+  total_jobs: number;
+  rating_count: number;
+  average_rating: number;
+  cancellation_count: number;
+  cancellation_rate: number;
+  badges: Badge[];
+  priority_tier: ConsumerPriorityTier;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BusinessRatingInsight {
+  id: string;
+  business_id: string;
+  period_type: InsightPeriodType;
+  period_start: string;
+  period_end: string;
+  total_ratings: number;
+  average_score: number;
+  positive_themes: ThemeTrend[];
+  negative_themes: ThemeTrend[];
+  insights: BusinessInsight[];
+  category_percentile: number | null;
+  created_at: string;
+}
+
+export interface CompletionSignal {
+  id: string;
+  execution_id: string;
+  signal_type: CompletionSignalType;
+  confidence: number;
+  metadata: Record<string, unknown>;
   created_at: string;
 }
 
@@ -175,6 +283,44 @@ export type ConversationInsert = Omit<Conversation, 'id' | 'created_at' | 'state
 
 export type RatingInsert = Omit<Rating, 'id' | 'created_at'> & {
   id?: string;
+};
+
+// =============================================================================
+// Rating System v2 Insert Types
+// =============================================================================
+
+export type RatingConversationInsert = Omit<RatingConversation, 'id' | 'created_at' | 'state' | 'messages' | 'extracted_data' | 'media_attachments' | 'reminder_count'> & {
+  id?: string;
+  state?: RatingConversationState;
+  messages?: RatingConversationMessage[];
+  extracted_data?: ExtractedData;
+  media_attachments?: MediaAttachment[];
+  reminder_count?: number;
+};
+
+export type RatingV2Insert = Omit<RatingV2, 'id' | 'created_at' | 'dimensions' | 'sentiment' | 'photos' | 'highlight_worthy' | 'concern_flagged'> & {
+  id?: string;
+  dimensions?: RatingDimensions;
+  sentiment?: SentimentData;
+  photos?: string[];
+  highlight_worthy?: boolean;
+  concern_flagged?: boolean;
+};
+
+export type ConsumerReputationInsert = Omit<ConsumerReputation, 'id' | 'created_at' | 'updated_at' | 'trust_score' | 'badges' | 'priority_tier'> & {
+  id?: string;
+  trust_score?: number;
+  badges?: Badge[];
+  priority_tier?: ConsumerPriorityTier;
+};
+
+export type BusinessRatingInsightInsert = Omit<BusinessRatingInsight, 'id' | 'created_at'> & {
+  id?: string;
+};
+
+export type CompletionSignalInsert = Omit<CompletionSignal, 'id' | 'created_at' | 'metadata'> & {
+  id?: string;
+  metadata?: Record<string, unknown>;
 };
 
 // =============================================================================

@@ -1264,6 +1264,69 @@ export default function InvestorContent() {
         </div>
       </section>
 
+      {/* Features Summary */}
+      <section className="inv-section">
+        <div className="inv-section-header">
+          <div className="inv-section-label">Platform Status</div>
+          <h2 className="inv-section-title">Features Built & Working</h2>
+          <p className="inv-section-subtitle">Full platform in production, ready for business recruitment.</p>
+        </div>
+
+        <div className="inv-table-wrapper">
+          <table className="inv-table">
+            <thead>
+              <tr>
+                <th>Feature</th>
+                <th>Status</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>WhatsApp Intake</td>
+                <td className="highlight">✅ Working</td>
+                <td>Zero-friction consumer entry (95% penetration in Qatar)</td>
+              </tr>
+              <tr>
+                <td>AI Conversation Flow</td>
+                <td className="highlight">✅ Working</td>
+                <td>Claude-powered intent extraction via natural conversation</td>
+              </tr>
+              <tr>
+                <td>Business Matching</td>
+                <td className="highlight">✅ Working</td>
+                <td>Weighted scoring: category (30%), zone (25%), price (15%), capacity (15%), trust (15%)</td>
+              </tr>
+              <tr>
+                <td>Sequential Dispatch</td>
+                <td className="highlight">✅ Working</td>
+                <td>Exclusive 15-min window for top-ranked business</td>
+              </tr>
+              <tr>
+                <td>Trust Score System</td>
+                <td className="highlight">✅ Working</td>
+                <td>Rating (40%) + response rate (25%) + completion (25%) + age (10%)</td>
+              </tr>
+              <tr>
+                <td>Auto-Accept</td>
+                <td className="highlight">✅ Working</td>
+                <td>Business sets rules, AI auto-accepts matching leads 24/7</td>
+              </tr>
+              <tr>
+                <td>Escalation Triggers</td>
+                <td className="highlight">✅ Working</td>
+                <td>Configure when to escalate to human (edge cases)</td>
+              </tr>
+              <tr>
+                <td>NOMOS Contracts</td>
+                <td className="highlight">✅ Working</td>
+                <td>Full machine-readable business contracts</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
       {/* NOMOS Protocol */}
       <section id="protocol" className="inv-section">
         <div className="inv-section-header">
@@ -1480,40 +1543,96 @@ Warranty: 30 days included`}</div>
         <div className="inv-section-header">
           <div className="inv-section-label">Market Position</div>
           <h2 className="inv-section-title">Competitive Landscape</h2>
-          <p className="inv-section-subtitle">What exists today and why Nida is different.</p>
+          <p className="inv-section-subtitle">Qatar market analysis and why Nida is different.</p>
+        </div>
+
+        {/* Qatar Market Opportunity Stats */}
+        <div className="inv-financials-grid" style={{ marginBottom: '3rem' }}>
+          <div className="inv-financial-card">
+            <div className="inv-financial-value">$4.54B</div>
+            <div className="inv-financial-label">Qatar E-commerce (2025)</div>
+          </div>
+          <div className="inv-financial-card">
+            <div className="inv-financial-value">$7.28B</div>
+            <div className="inv-financial-label">Facility Management Market</div>
+          </div>
+          <div className="inv-financial-card">
+            <div className="inv-financial-value">19.1%</div>
+            <div className="inv-financial-label">Market CAGR (2024-30)</div>
+          </div>
+          <div className="inv-financial-card">
+            <div className="inv-financial-value">3</div>
+            <div className="inv-financial-label">Funded Competitors</div>
+          </div>
+        </div>
+
+        {/* Qatar Local Competitors */}
+        <div className="inv-card-grid" style={{ marginBottom: '2rem' }}>
+          <div className="inv-card">
+            <h4 style={{ color: '#ef4444', marginBottom: '1rem' }}>Syaanh (صيانة)</h4>
+            <p style={{ marginBottom: '1rem', fontSize: '0.9rem' }}>Qatar&apos;s largest: 4,500+ providers, 40+ categories</p>
+            <ul style={{ fontSize: '0.85rem' }}>
+              <li>Bidding model (race to bottom)</li>
+              <li>App download required</li>
+              <li>No AI matching</li>
+              <li style={{ color: '#ef4444' }}>No external funding</li>
+            </ul>
+          </div>
+
+          <div className="inv-card">
+            <h4 style={{ color: '#ef4444', marginBottom: '1rem' }}>Aldobi (الدوبي)</h4>
+            <p style={{ marginBottom: '1rem', fontSize: '0.9rem' }}>Arabic-first app: cleaning, laundry, AC, pest control</p>
+            <ul style={{ fontSize: '0.85rem' }}>
+              <li>WhatsApp for support only</li>
+              <li>App required for booking</li>
+              <li>Manual service selection</li>
+              <li>No intelligent matching</li>
+            </ul>
+          </div>
+
+          <div className="inv-card">
+            <h4 style={{ color: '#ef4444', marginBottom: '1rem' }}>Khedmah (خدمة)</h4>
+            <p style={{ marginBottom: '1rem', fontSize: '0.9rem' }}>Local Qatar app focused on cleaning services</p>
+            <ul style={{ fontSize: '0.85rem' }}>
+              <li>Single category focus</li>
+              <li>App-based only</li>
+              <li>No AI integration</li>
+              <li>Manual provider selection</li>
+            </ul>
+          </div>
         </div>
 
         <div className="inv-card-grid" style={{ marginBottom: '3rem' }}>
           <div className="inv-card">
-            <h4 style={{ color: '#ef4444', marginBottom: '1rem' }}>Traditional Marketplaces</h4>
-            <p style={{ marginBottom: '1rem', fontSize: '0.9rem' }}>Consumer posts → All businesses see it → Bidding war → Consumer overwhelmed</p>
+            <h4 style={{ color: '#f59e0b', marginBottom: '1rem' }}>Home Hero & WOW2ALL</h4>
+            <p style={{ marginBottom: '1rem', fontSize: '0.9rem' }}>Other Qatar platforms for home/personal services</p>
             <ul style={{ fontSize: '0.85rem' }}>
-              <li><strong>Thumbtack:</strong> Race to bottom, spam quotes</li>
-              <li><strong>Angi:</strong> Consumer still compares manually</li>
-              <li><strong>HomeAdvisor:</strong> Pay per lead, quality varies</li>
-              <li><strong>Yelp:</strong> Discovery only, no transaction</li>
+              <li>Home Hero: cleaning, beauty, wellness</li>
+              <li>WOW2ALL: WhatsApp for enquiries only</li>
+              <li>Both require app download</li>
+              <li>No autonomous matching</li>
             </ul>
           </div>
 
           <div className="inv-card">
-            <h4 style={{ color: '#f59e0b', marginBottom: '1rem' }}>On-Demand Apps</h4>
-            <p style={{ marginBottom: '1rem', fontSize: '0.9rem' }}>Uber model — works for rides, but limited for complex services</p>
+            <h4 style={{ color: '#f59e0b', marginBottom: '1rem' }}>Regional (Not in Qatar)</h4>
+            <p style={{ marginBottom: '1rem', fontSize: '0.9rem' }}>UAE-focused services, potential future entrants</p>
             <ul style={{ fontSize: '0.85rem' }}>
-              <li><strong>Uber:</strong> Single vertical (rides)</li>
-              <li><strong>Urban Company:</strong> Employs workers, heavy ops</li>
-              <li><strong>Careem:</strong> Rides + food, not local services</li>
-              <li><strong>TaskRabbit:</strong> Limited categories, gig workers</li>
+              <li><strong>ServiceMarket:</strong> 150K+ UAE customers</li>
+              <li><strong>Mr. Usta:</strong> Dubai traditional model</li>
+              <li><strong>Urban Company:</strong> Heavy ops model</li>
+              <li><strong>Snoonu:</strong> Delivery only</li>
             </ul>
           </div>
 
           <div className="inv-card">
-            <h4 style={{ color: 'var(--secondary)', marginBottom: '1rem' }}>Qatar/GCC Gap</h4>
-            <p style={{ marginBottom: '1rem', fontSize: '0.9rem' }}>No dominant home services platform. First-mover advantage.</p>
+            <h4 style={{ color: 'var(--secondary)', marginBottom: '1rem' }}>NIDA Differentiation</h4>
+            <p style={{ marginBottom: '1rem', fontSize: '0.9rem' }}>Only AI-native, protocol-based platform</p>
             <ul style={{ fontSize: '0.85rem' }}>
-              <li><strong>Snoonu:</strong> Delivery only, not services</li>
-              <li><strong>ServiceMarket (UAE):</strong> Traditional listings</li>
-              <li><strong>Helpling (UAE):</strong> Single vertical (cleaning)</li>
-              <li><strong style={{ color: 'var(--secondary)' }}>Qatar is underserved</strong></li>
+              <li><strong>WhatsApp IS the interface</strong> (not support)</li>
+              <li>AI auto-matches best provider</li>
+              <li>NOMOS machine-readable contracts</li>
+              <li style={{ color: 'var(--secondary)' }}>Agent-to-agent commerce ready</li>
             </ul>
           </div>
         </div>
@@ -1939,6 +2058,48 @@ Warranty: 30 days included`}</div>
         </div>
       </section>
 
+      {/* Risk Factors */}
+      <section className="inv-section">
+        <div className="inv-section-header">
+          <div className="inv-section-label">Risk Analysis</div>
+          <h2 className="inv-section-title">Risk Factors & Mitigations</h2>
+          <p className="inv-section-subtitle">Proactive risk management built into the platform.</p>
+        </div>
+
+        <div className="inv-table-wrapper">
+          <table className="inv-table">
+            <thead>
+              <tr>
+                <th>Risk</th>
+                <th>Mitigation</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td className="dim">WhatsApp dependency</td>
+                <td>Multi-channel infrastructure ready (SMS, email, push)</td>
+              </tr>
+              <tr>
+                <td className="dim">Provider quality</td>
+                <td>Approval workflow, CR verification, trust scores</td>
+              </tr>
+              <tr>
+                <td className="dim">Consumer adoption</td>
+                <td>Zero-friction WhatsApp (no app download)</td>
+              </tr>
+              <tr>
+                <td className="dim">Competitor response</td>
+                <td>NOMOS Protocol moat (machine-readable contracts)</td>
+              </tr>
+              <tr>
+                <td className="dim">Regulatory</td>
+                <td>Compliance-by-design, full audit trails</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
       {/* CTA */}
       <section className="inv-cta">
         <h2>The Protocol That Handles<br/>AC Repairs Today<br/>Handles Bank Loans Tomorrow</h2>
@@ -1955,6 +2116,17 @@ Warranty: 30 days included`}</div>
         <div className="inv-logo" style={{ fontSize: '2rem' }}>NIDA</div>
         <div className="tagline">You call. The right one answers.</div>
         <p style={{ color: 'var(--gray)', fontSize: '0.85rem', marginTop: '2rem' }}>Building the infrastructure layer for agent-to-agent commerce.</p>
+
+        {/* Sources */}
+        <div style={{ marginTop: '3rem', paddingTop: '2rem', borderTop: '1px solid rgba(255,255,255,0.1)', textAlign: 'left', maxWidth: '600px', margin: '3rem auto 0' }}>
+          <h5 style={{ color: 'var(--gray-light)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '1rem' }}>Sources</h5>
+          <ul style={{ listStyle: 'none', padding: 0, margin: 0, fontSize: '0.8rem', color: 'var(--gray)' }}>
+            <li style={{ marginBottom: '0.5rem' }}>Tracxn: Local Services Startups in Qatar</li>
+            <li style={{ marginBottom: '0.5rem' }}>Syaanh.com - Qatar&apos;s Maintenance Hub</li>
+            <li style={{ marginBottom: '0.5rem' }}>Qatar B2C E-commerce Market Report 2025</li>
+            <li style={{ marginBottom: '0.5rem' }}>Qatar Facility Management Market Analysis</li>
+          </ul>
+        </div>
       </footer>
     </div>
   );
