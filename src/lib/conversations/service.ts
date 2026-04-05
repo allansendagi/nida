@@ -26,15 +26,40 @@ export async function getOrCreateConsumer(identifier: string): Promise<Consumer>
   if (identifier.startsWith('tg:')) {
     const chatId = identifier.slice(3);
 
-    // Look for existing consumer by telegram_chat_id
-    const { data: existing } = await supabase
+    // First, look for existing consumer by telegram_chat_id (new format)
+    const { data: existingByTelegram } = await supabase
       .from('consumers')
       .select('*')
       .eq('telegram_chat_id', chatId)
       .single();
 
-    if (existing) {
-      return existing as Consumer;
+    if (existingByTelegram) {
+      return existingByTelegram as Consumer;
+    }
+
+    // Check for existing consumer by phone (old format: 'tg:chatId')
+    // This handles consumers created before the telegram_chat_id field was used
+    const { data: existingByPhone } = await supabase
+      .from('consumers')
+      .select('*')
+      .eq('phone', identifier)
+      .single();
+
+    if (existingByPhone) {
+      // Migrate: update to set telegram_chat_id
+      const { data: updated, error: updateError } = await supabase
+        .from('consumers')
+        .update({ telegram_chat_id: chatId })
+        .eq('id', existingByPhone.id)
+        .select()
+        .single();
+
+      if (updateError) {
+        console.error('Failed to migrate consumer telegram_chat_id:', updateError);
+        return existingByPhone as Consumer; // Return original if update fails
+      }
+
+      return updated as Consumer;
     }
 
     // Create new consumer with telegram_chat_id
