@@ -16,26 +16,61 @@ export interface ProcessMessageResult {
 }
 
 /**
- * Get or create a consumer by phone number
+ * Get or create a consumer by phone number or Telegram identifier
+ * For Telegram users (tg:xxx format), stores the chat ID in telegram_chat_id field
  */
-export async function getOrCreateConsumer(phone: string): Promise<Consumer> {
+export async function getOrCreateConsumer(identifier: string): Promise<Consumer> {
   const supabase = createServiceClient();
 
-  // Try to find existing consumer
+  // Check if this is a Telegram identifier (tg:chatId format)
+  if (identifier.startsWith('tg:')) {
+    const chatId = identifier.slice(3);
+
+    // Look for existing consumer by telegram_chat_id
+    const { data: existing } = await supabase
+      .from('consumers')
+      .select('*')
+      .eq('telegram_chat_id', chatId)
+      .single();
+
+    if (existing) {
+      return existing as Consumer;
+    }
+
+    // Create new consumer with telegram_chat_id
+    // Phone is set to tg:chatId temporarily until they provide their real phone
+    const { data: newConsumer, error } = await supabase
+      .from('consumers')
+      .insert({
+        telegram_chat_id: chatId,
+        phone: identifier, // Temporary placeholder, will be updated when user shares contact
+      })
+      .select()
+      .single();
+
+    if (error) {
+      throw new Error(`Failed to create consumer: ${error.message}`);
+    }
+
+    return newConsumer as Consumer;
+  }
+
+  // Regular phone number flow (WhatsApp, etc.)
+  // Try to find existing consumer by phone
   const { data: existing } = await supabase
     .from('consumers')
     .select('*')
-    .eq('phone', phone)
+    .eq('phone', identifier)
     .single();
 
   if (existing) {
     return existing as Consumer;
   }
 
-  // Create new consumer
+  // Create new consumer with phone
   const { data: newConsumer, error } = await supabase
     .from('consumers')
-    .insert({ phone })
+    .insert({ phone: identifier })
     .select()
     .single();
 
