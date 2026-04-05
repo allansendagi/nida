@@ -1,4 +1,4 @@
-export type NotificationChannel = 'whatsapp' | 'sms' | 'email' | 'push';
+export type NotificationChannel = 'whatsapp' | 'sms' | 'email' | 'push' | 'telegram';
 
 export type NotificationStatus = 'pending' | 'sent' | 'delivered' | 'read' | 'failed';
 
@@ -7,6 +7,7 @@ export interface NotificationPayload {
   businessName: string;
   businessPhone: string;
   businessEmail?: string;
+  telegramChatId?: string;
   negotiationId: string;
   intentId: string;
   category: string;

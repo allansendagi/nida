@@ -8,6 +8,7 @@ import type {
 import { TEMPLATES, type TemplateName } from './templates';
 import { whatsappAdapter } from './channels/whatsapp';
 import { emailAdapter } from './channels/email';
+import { telegramAdapter } from './channels/telegram';
 import type { Business, Negotiation, Intent } from '@/types/database';
 import type { IntentData } from '@/types/nomos';
 
@@ -15,6 +16,7 @@ import type { IntentData } from '@/types/nomos';
 const adapters: Record<NotificationChannel, ChannelAdapter | null> = {
   whatsapp: whatsappAdapter,
   email: emailAdapter,
+  telegram: telegramAdapter,
   sms: null, // TODO: Add Twilio adapter
   push: null, // TODO: Add push notification adapter
 };
@@ -62,6 +64,7 @@ export async function dispatchNotifications(
       businessName: business.display_name,
       businessPhone: business.phone,
       businessEmail: business.email || undefined,
+      telegramChatId: business.telegram_chat_id || undefined,
       negotiationId: negotiation.id,
       intentId: intent.id,
       category: intentData.category,
@@ -83,6 +86,9 @@ export async function dispatchNotifications(
 
       // Skip email if no email address
       if (channel === 'email' && !business.email) continue;
+
+      // Skip telegram if no chat ID
+      if (channel === 'telegram' && !payload.telegramChatId) continue;
 
       try {
         const result = await adapter.send(payload, template);

@@ -14,7 +14,7 @@ export type TemplateName = typeof TEMPLATES[keyof typeof TEMPLATES];
 export function formatMessage(
   template: TemplateName,
   payload: NotificationPayload,
-  channel: 'whatsapp' | 'sms' | 'email'
+  channel: 'whatsapp' | 'sms' | 'email' | 'telegram'
 ): { subject?: string; body: string } {
   const categoryDisplay = payload.category.split('.').pop()?.replace(/_/g, ' ') || 'service';
   const locationDisplay = payload.location.replace(/_/g, ' ');
@@ -42,6 +42,18 @@ First to claim gets the customer contact.
 - Nida
           `.trim(),
         };
+      } else if (channel === 'telegram') {
+        // Telegram - use HTML formatting
+        return {
+          body: `🔔 <b>New Lead!</b>
+
+<b>${categoryDisplay.toUpperCase()}</b> in ${locationDisplay}
+⚡ Urgency: ${payload.urgency}
+📊 Match: ${payload.matchScore}% (Rank #${payload.matchRank})
+${payload.budgetRange ? `💰 Budget: ${payload.budgetRange}` : ''}
+
+Use the buttons below to respond.`,
+        };
       } else {
         // WhatsApp / SMS - keep it short
         return {
@@ -57,6 +69,15 @@ Claim now: ${payload.claimUrl}`,
       }
 
     case TEMPLATES.LEAD_REMINDER:
+      if (channel === 'telegram') {
+        return {
+          body: `⏰ <b>Reminder</b>
+
+You have an unclaimed <b>${categoryDisplay}</b> lead in ${locationDisplay}.
+
+Other providers may claim it first!`,
+        };
+      }
       return {
         subject: channel === 'email' ? `Reminder: Unclaimed lead in ${locationDisplay}` : undefined,
         body: `⏰ Reminder: You have an unclaimed ${categoryDisplay} lead in ${locationDisplay}.
@@ -67,6 +88,15 @@ Claim: ${payload.claimUrl}`,
       };
 
     case TEMPLATES.LEAD_EXPIRING:
+      if (channel === 'telegram') {
+        return {
+          body: `⚠️ <b>Lead Expiring!</b>
+
+<b>${categoryDisplay}</b> in ${locationDisplay} will be reassigned soon.
+
+Act now or lose it!`,
+        };
+      }
       return {
         subject: channel === 'email' ? `Last chance: Lead expiring soon` : undefined,
         body: `⚠️ Lead expiring!
@@ -99,6 +129,17 @@ This lead has been flagged for your attention based on your agent settings.
 
 - Nida
           `.trim(),
+        };
+      } else if (channel === 'telegram') {
+        return {
+          body: `🚨 <b>ATTENTION NEEDED</b>
+
+<b>${categoryDisplay.toUpperCase()}</b> in ${locationDisplay}
+⚡ Urgency: ${payload.urgency}
+
+⚠️ ${payload.escalationTriggers?.join(', ') || 'Needs your review'}
+
+Please review and respond using the buttons below.`,
         };
       } else {
         return {
@@ -133,6 +174,16 @@ View details: ${payload.claimUrl}
 
 - Nida
           `.trim(),
+        };
+      } else if (channel === 'telegram') {
+        return {
+          body: `✅ <b>AUTO-ACCEPTED</b>
+
+<b>${categoryDisplay.toUpperCase()}</b> in ${locationDisplay}
+⚡ Urgency: ${payload.urgency}
+${payload.budgetRange ? `💰 Budget: ${payload.budgetRange}` : ''}
+
+This lead matched your auto-accept criteria and has been confirmed.`,
         };
       } else {
         return {
