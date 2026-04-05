@@ -3,6 +3,7 @@ import { createClient, createServiceClient } from '@/lib/supabase/server';
 import { createAcceptMessage, appendMessage } from '@/lib/nomos/protocol';
 import { generateExecutionId } from '@/lib/utils';
 import { sendWhatsAppReply } from '@/lib/notifications/channels/whatsapp';
+import { sendTelegramReply } from '@/lib/notifications/channels/telegram';
 import type { AgreedTerms, NomosContract, ProtocolMessage } from '@/types/nomos';
 
 interface Props {
@@ -159,14 +160,24 @@ export async function POST(request: Request, { params }: Props) {
       .neq('id', negotiationId);
 
     // Notify customer that a provider accepted their request
+    const serviceType = intent.intent_data.category?.split('.').pop()?.replace(/_/g, ' ') || 'service';
+    const customerMessage = `Great news! ${business.display_name} has accepted your ${serviceType} request and will contact you shortly.`;
+
+    // Check if customer is a Telegram user
+    const telegramChatId = intent.consumer.telegram_chat_id;
+    if (telegramChatId) {
+      const notifyResult = await sendTelegramReply(telegramChatId, customerMessage);
+      if (!notifyResult.success) {
+        console.warn('Failed to notify customer via Telegram:', notifyResult.error);
+      }
+    }
+
+    // Also try WhatsApp if they have a phone number
     const customerPhone = intent.consumer.phone;
     if (customerPhone) {
-      const serviceType = intent.intent_data.category?.split('.').pop()?.replace(/_/g, ' ') || 'service';
-      const customerMessage = `Great news! ${business.display_name} has accepted your ${serviceType} request and will contact you shortly.`;
-
       const notifyResult = await sendWhatsAppReply(customerPhone, customerMessage);
       if (!notifyResult.success) {
-        console.warn('Failed to notify customer:', notifyResult.error);
+        console.warn('Failed to notify customer via WhatsApp:', notifyResult.error);
       }
     }
 
