@@ -119,6 +119,31 @@ export async function POST(request: Request, { params }: Props) {
       );
     }
 
+    // Build consumer contact info
+    // For Telegram users without a real phone, include telegram info
+    const consumerPhone = intent.consumer.phone;
+    const consumerTelegramId = intent.consumer.telegram_chat_id ||
+      (consumerPhone?.startsWith('tg:') ? consumerPhone.slice(3) : null);
+
+    const consumerContact: Record<string, string> = {
+      name: intent.consumer.name || 'Customer',
+    };
+
+    // Only include phone if it's a real phone number
+    if (consumerPhone && !consumerPhone.startsWith('tg:')) {
+      consumerContact.phone = consumerPhone;
+    }
+
+    // Include telegram info if available
+    if (consumerTelegramId) {
+      consumerContact.telegram_chat_id = consumerTelegramId;
+      consumerContact.contact_method = 'telegram';
+      // If no real phone, note that
+      if (!consumerContact.phone) {
+        consumerContact.note = 'Customer is on Telegram - they will receive your contact info';
+      }
+    }
+
     // Create execution record with consumer contact revealed
     const { data: execution, error: execError } = await serviceSupabase
       .from('executions')
@@ -127,10 +152,7 @@ export async function POST(request: Request, { params }: Props) {
         negotiation_id: negotiationId,
         agreed_terms: agreedTerms,
         status: 'confirmed',
-        consumer_contact: {
-          phone: intent.consumer.phone,
-          name: intent.consumer.name || 'Customer',
-        },
+        consumer_contact: consumerContact,
       })
       .select()
       .single();
@@ -161,20 +183,29 @@ export async function POST(request: Request, { params }: Props) {
 
     // Notify customer that a provider accepted their request
     const serviceType = intent.intent_data.category?.split('.').pop()?.replace(/_/g, ' ') || 'service';
-    const customerMessage = `Great news! ${business.display_name} has accepted your ${serviceType} request and will contact you shortly.`;
+    const customerMessage = `Great news! ${business.display_name} has accepted your ${serviceType} request and will contact you shortly.\n\n📞 Their phone: ${business.phone}`;
 
     // Check if customer is a Telegram user
-    const telegramChatId = intent.consumer.telegram_chat_id;
+    // First try telegram_chat_id field, then fall back to checking phone for tg: prefix
+    let telegramChatId = intent.consumer.telegram_chat_id;
+    const customerPhone = intent.consumer.phone;
+
+    // Handle legacy format where telegram chat ID is stored as tg:xxx in phone field
+    if (!telegramChatId && customerPhone?.startsWith('tg:')) {
+      telegramChatId = customerPhone.slice(3);
+    }
+
     if (telegramChatId) {
       const notifyResult = await sendTelegramReply(telegramChatId, customerMessage);
       if (!notifyResult.success) {
         console.warn('Failed to notify customer via Telegram:', notifyResult.error);
+      } else {
+        console.log('Customer notified via Telegram:', telegramChatId);
       }
     }
 
-    // Also try WhatsApp if they have a phone number
-    const customerPhone = intent.consumer.phone;
-    if (customerPhone) {
+    // Also try WhatsApp if they have a real phone number (not a tg: placeholder)
+    if (customerPhone && !customerPhone.startsWith('tg:')) {
       const notifyResult = await sendWhatsAppReply(customerPhone, customerMessage);
       if (!notifyResult.success) {
         console.warn('Failed to notify customer via WhatsApp:', notifyResult.error);

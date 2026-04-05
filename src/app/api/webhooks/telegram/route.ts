@@ -116,14 +116,38 @@ async function handleMessage(message: TelegramMessage): Promise<void> {
 
       // Check if we already have a real phone number for this consumer
       const supabase = createServiceClient();
-      const { data: consumer } = await supabase
+
+      // First try by telegram_chat_id (new format)
+      let consumer = null;
+      const { data: consumerByTelegram } = await supabase
         .from('consumers')
         .select('phone, telegram_chat_id')
         .eq('telegram_chat_id', chatId)
         .single();
 
-      // If phone starts with 'tg:', they haven't provided a real phone yet
-      if (consumer && consumer.phone.startsWith('tg:')) {
+      if (consumerByTelegram) {
+        consumer = consumerByTelegram;
+      } else {
+        // Fall back to phone field (legacy format: tg:chatId)
+        const { data: consumerByPhone } = await supabase
+          .from('consumers')
+          .select('phone, telegram_chat_id')
+          .eq('phone', `tg:${chatId}`)
+          .single();
+
+        if (consumerByPhone) {
+          consumer = consumerByPhone;
+
+          // Migrate: set telegram_chat_id for future lookups
+          await supabase
+            .from('consumers')
+            .update({ telegram_chat_id: chatId })
+            .eq('phone', `tg:${chatId}`);
+        }
+      }
+
+      // If phone starts with 'tg:' or is missing, they haven't provided a real phone yet
+      if (consumer && (!consumer.phone || consumer.phone.startsWith('tg:'))) {
         // Ask for phone number with contact sharing button
         await sendPhoneNumberRequest(chatId);
       }
@@ -262,7 +286,11 @@ async function notifyConsumerOfAcceptance(negotiationId: string): Promise<void> 
     const consumer = negotiation.intent?.consumer;
     const business = negotiation.business;
 
-    if (!consumer?.telegram_chat_id) {
+    // Get telegram chat ID - try field first, then fall back to phone field format
+    const telegramChatId = consumer?.telegram_chat_id ||
+      (consumer?.phone?.startsWith('tg:') ? consumer.phone.slice(3) : null);
+
+    if (!telegramChatId) {
       console.log('Consumer does not have a Telegram chat ID, skipping notification');
       return;
     }
@@ -278,9 +306,9 @@ async function notifyConsumerOfAcceptance(negotiationId: string): Promise<void> 
       `📞 Their phone: ${businessPhone}\n\n` +
       `Feel free to reach out to them directly if you don't hear back soon.`;
 
-    await sendTelegramReply(consumer.telegram_chat_id, message);
+    await sendTelegramReply(telegramChatId, message);
 
-    console.log(`Consumer ${consumer.id} notified of acceptance via Telegram`);
+    console.log(`Consumer ${consumer.id} notified of acceptance via Telegram (chat ID: ${telegramChatId})`);
   } catch (error) {
     console.error('Error notifying consumer of acceptance:', error);
   }
@@ -332,13 +360,28 @@ async function handleContactSharing(chatId: string, contact: TelegramContact): P
 
   console.log(`Received phone number from Telegram ${chatId}: ${phoneNumber}`);
 
-  // Update the consumer's phone number
-  const { error } = await supabase
+  // Try to update by telegram_chat_id first (new format)
+  let { data: updated, error } = await supabase
     .from('consumers')
     .update({ phone: phoneNumber })
-    .eq('telegram_chat_id', chatId);
+    .eq('telegram_chat_id', chatId)
+    .select()
+    .single();
 
-  if (error) {
+  // If no rows updated, try by phone field (legacy format)
+  if (!updated) {
+    const result = await supabase
+      .from('consumers')
+      .update({ phone: phoneNumber, telegram_chat_id: chatId })
+      .eq('phone', `tg:${chatId}`)
+      .select()
+      .single();
+
+    updated = result.data;
+    error = result.error;
+  }
+
+  if (error || !updated) {
     console.error('Failed to update consumer phone:', error);
     await sendTelegramReply(
       chatId,
