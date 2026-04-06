@@ -326,11 +326,11 @@ export function filterByLeadTime(
   urgency: string
 ): MatchResult[] {
   const urgencyHours: Record<string, number> = {
-    asap: 0,
-    same_day: 4,
-    next_day: 24,
-    this_week: 72,
-    flexible: 168,
+    asap: 4,       // can respond within 4 hours
+    same_day: 12,  // can respond same day
+    next_day: 36,  // can respond by next day (with buffer)
+    this_week: 120, // can respond this week
+    flexible: 240, // no real constraint
   };
 
   const maxHours = urgencyHours[urgency] ?? 72;
