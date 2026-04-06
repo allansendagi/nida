@@ -26,11 +26,9 @@ export function Hero() {
 
             {/* Headline */}
             <h1 className="text-[2.75rem] font-bold leading-[1.1] tracking-tight text-white sm:text-5xl md:text-6xl">
-              Home services,{' '}
+              <span className="bg-gradient-to-r from-green-400 to-emerald-300 bg-clip-text text-transparent">Urgent</span>{' '}home services,{' '}
               <br className="hidden sm:block" />
-              <span className="bg-gradient-to-r from-green-400 to-emerald-300 bg-clip-text text-transparent">
-                matched in minutes.
-              </span>
+              matched in minutes.
             </h1>
 
             {/* Subheadline */}

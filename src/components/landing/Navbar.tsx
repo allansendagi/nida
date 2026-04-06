@@ -36,7 +36,7 @@ export function Navbar() {
             >
               نداء
             </span>
-            <span className="text-[10px] font-bold tracking-[0.3em] uppercase text-muted-foreground/50 group-hover:text-muted-foreground/70 transition-colors">
+            <span className="text-sm font-bold tracking-[0.25em] uppercase text-foreground/70 group-hover:text-foreground/90 transition-colors">
               NIDA
             </span>
           </Link>
