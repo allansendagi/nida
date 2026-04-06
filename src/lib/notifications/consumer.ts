@@ -4,6 +4,36 @@ import { sendWhatsAppReply } from './channels/whatsapp';
 import type { IntentData } from '@/types/nomos';
 
 /**
+ * Send an alert to the admin Telegram account when a lead has no providers.
+ * Requires ADMIN_TELEGRAM_CHAT_ID env var.
+ */
+export async function notifyAdminNoProviders(
+  intentId: string,
+  intentData: IntentData
+): Promise<void> {
+  const adminChatId = process.env.ADMIN_TELEGRAM_CHAT_ID;
+  if (!adminChatId) {
+    console.warn('ADMIN_TELEGRAM_CHAT_ID not set — skipping admin alert');
+    return;
+  }
+
+  const category = intentData.category?.replace(/\./g, ' › ') || 'Unknown';
+  const zone = intentData.location?.zone?.replace(/_/g, ' ') || 'Unknown zone';
+  const urgency = intentData.urgency || 'unknown';
+
+  const message =
+    `⚠️ <b>No Providers Found</b>\n\n` +
+    `A consumer request went unmatched:\n` +
+    `📋 Category: <b>${category}</b>\n` +
+    `📍 Zone: <b>${zone}</b>\n` +
+    `⚡ Urgency: ${urgency}\n\n` +
+    `Intent ID: <code>${intentId}</code>\n\n` +
+    `Approve a provider in this zone/category to trigger an automatic consumer re-alert.`;
+
+  await sendTelegramReply(adminChatId, message);
+}
+
+/**
  * Notify a consumer that a service provider has accepted their request.
  * Sends via Telegram if consumer has telegram_chat_id, otherwise WhatsApp.
  */

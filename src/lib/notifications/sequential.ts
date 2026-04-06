@@ -1,7 +1,7 @@
 import { createServiceClient } from '@/lib/supabase/server';
 import { dispatchNotifications } from './dispatcher';
 import { sendEscalationNotification, sendAutoAcceptedNotification } from './escalation';
-import { notifyConsumerEscalating, notifyConsumerNoProviders } from './consumer';
+import { notifyConsumerEscalating, notifyConsumerNoProviders, notifyAdminNoProviders } from './consumer';
 import { evaluateAutoAccept, calculateIntentPrice } from '@/lib/nomos/auto-accept';
 import { evaluateEscalation } from '@/lib/nomos/escalation';
 import type { Business, Intent, Negotiation } from '@/types/database';
@@ -403,6 +403,12 @@ export async function escalateToNextProvider(
         console.error('Failed to notify consumer of exhaustion:', err)
       );
     }
+
+    // Alert admin so they can source a provider
+    const intentData = intent.intent_data as IntentData;
+    notifyAdminNoProviders(intentId, intentData).catch(err =>
+      console.error('Failed to send admin no-providers alert:', err)
+    );
 
     return { success: false, error: 'All providers have been exhausted' };
   }

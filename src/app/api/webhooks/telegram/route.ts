@@ -4,6 +4,7 @@ import { sendTelegramReply, telegramAdapter } from '@/lib/notifications/channels
 import { createServiceClient } from '@/lib/supabase/server';
 import { acceptOffer, rejectOffer } from '@/lib/notifications/sequential';
 import { notifyConsumerAccepted } from '@/lib/notifications/consumer';
+import { getRedis } from '@/lib/redis';
 
 /**
  * Telegram webhook handler
@@ -106,6 +107,16 @@ async function handleMessage(message: TelegramMessage): Promise<void> {
       "4. They'll contact you with quotes\n\n" +
       "Just describe what you need and I'll take care of the rest!"
     );
+    return;
+  }
+
+  // Handle business Telegram linking: /start link-CODE or /link CODE
+  const linkMatch =
+    text.match(/^\/start link-([A-Z0-9]{6})$/i) ||
+    text.match(/^\/link ([A-Z0-9]{6})$/i);
+
+  if (linkMatch) {
+    await handleBusinessTelegramLink(chatId, linkMatch[1].toUpperCase());
     return;
   }
 
@@ -356,6 +367,53 @@ async function handleContactSharing(chatId: string, contact: TelegramContact): P
       }
     );
   }
+}
+
+/**
+ * Link a business's Telegram account using a one-time code generated from the dashboard.
+ */
+async function handleBusinessTelegramLink(chatId: string, code: string): Promise<void> {
+  const redis = getRedis();
+  if (!redis) {
+    await sendTelegramReply(chatId, '❌ Link service is temporarily unavailable. Please try again in a moment.');
+    return;
+  }
+
+  const key = `tg_link:${code}`;
+  const record = await redis.get<{ businessId: string; displayName: string }>(key);
+
+  if (!record) {
+    await sendTelegramReply(
+      chatId,
+      '❌ That code is invalid or has expired. Please generate a new code from your Nida dashboard.'
+    );
+    return;
+  }
+
+  const supabase = createServiceClient();
+
+  const { error } = await supabase
+    .from('businesses')
+    .update({ telegram_chat_id: chatId })
+    .eq('id', record.businessId);
+
+  if (error) {
+    console.error('Failed to link business telegram_chat_id:', error);
+    await sendTelegramReply(chatId, '❌ Something went wrong. Please try again or contact support.');
+    return;
+  }
+
+  // Delete the code so it can't be reused
+  await redis.del(key);
+
+  await sendTelegramReply(
+    chatId,
+    `✅ <b>Telegram linked!</b>\n\n` +
+    `Your account is now connected to <b>${record.displayName}</b> on Nida.\n\n` +
+    `You'll receive new leads here with one-tap Accept/Decline buttons. 🎉`
+  );
+
+  console.log(`Business ${record.businessId} (${record.displayName}) linked Telegram chat ${chatId}`);
 }
 
 // Telegram types

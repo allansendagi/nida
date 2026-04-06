@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { ProfileEditor } from '@/components/dashboard/profile-editor';
+import { TelegramConnect } from '@/components/dashboard/telegram-connect';
 
 export default async function ProfilePage() {
   const supabase = await createClient();
@@ -32,9 +33,16 @@ export default async function ProfilePage() {
   }
 
   return (
-    <div className="max-w-2xl">
-      <h1 className="text-2xl font-bold mb-6">Business Profile</h1>
-      <ProfileEditor business={business} />
+    <div className="max-w-2xl space-y-8">
+      <div>
+        <h1 className="text-2xl font-bold mb-6">Business Profile</h1>
+        <ProfileEditor business={business} />
+      </div>
+
+      <div>
+        <h2 className="text-lg font-semibold mb-3">Notifications</h2>
+        <TelegramConnect alreadyLinked={!!business.telegram_chat_id} />
+      </div>
     </div>
   );
 }
