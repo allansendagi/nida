@@ -65,11 +65,6 @@ export function Navbar() {
               Builder
             </Link>
             <Link href="/auth/login">
-              <Button variant="outline" size="sm">
-                I Need a Service
-              </Button>
-            </Link>
-            <Link href="/auth/login">
               <Button size="sm">
                 I&apos;m a Business
               </Button>
@@ -101,9 +96,9 @@ export function Navbar() {
                 </a>
               ))}
               <div className="flex flex-col gap-2 pt-4 border-t">
-                <Link href="/auth/login" onClick={() => setMobileMenuOpen(false)}>
-                  <Button variant="outline" className="w-full">
-                    I Need a Service
+                <Link href="/nomos-builder" onClick={() => setMobileMenuOpen(false)}>
+                  <Button variant="outline" className="w-full gap-2">
+                    <span className="font-mono text-xs">.nomos</span> Builder
                   </Button>
                 </Link>
                 <Link href="/auth/login" onClick={() => setMobileMenuOpen(false)}>
