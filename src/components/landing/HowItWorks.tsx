@@ -1,122 +1,109 @@
 import Image from 'next/image';
-import { Sparkles, CheckCircle, FileText, Target, Handshake } from 'lucide-react';
 
 const consumerSteps = [
   {
-    icon: null, // replaced by channel logos
-    channelLogos: true,
     title: 'Open WhatsApp or Telegram',
-    description: 'No app downloads. No sign-up. Just message Nida on the app you already use.',
+    description: 'No downloads. No sign-up. Message Nida on the app you already use.',
+    channelLogos: true,
   },
   {
-    icon: Sparkles,
-    channelLogos: false,
     title: 'Describe what you need',
-    description: 'Tell Nida in plain language — "leaking pipe in West Bay, need someone today." That\'s it.',
+    description: 'Plain language works fine — "leaking pipe in West Bay, need someone today."',
+    channelLogos: false,
   },
   {
-    icon: CheckCircle,
-    channelLogos: false,
-    title: 'Provider confirmed in minutes',
+    title: 'Provider confirmed',
     description: 'Nida matches, notifies, and confirms a verified provider. You get their contact when they accept.',
+    channelLogos: false,
   },
 ];
 
 const businessSteps = [
   {
-    icon: FileText,
     title: 'Create your profile',
-    description: 'Set your service categories, zones, and pricing. Or upload a .nomos contract for precise AI matching.',
+    description: 'Set your service zones, categories, and pricing. Upload a .nomos contract for precision matching.',
   },
   {
-    icon: Target,
     title: 'Receive pre-qualified leads',
-    description: 'Get leads that match your exact capabilities — on WhatsApp or Telegram the moment they\'re matched.',
+    description: 'Leads arrive on WhatsApp or Telegram — matched to your exact capabilities, not broadcast to everyone.',
   },
   {
-    icon: Handshake,
     title: 'Accept with one tap',
-    description: 'Hit Accept in Telegram or WhatsApp. Consumer gets your contact instantly. Job confirmed.',
+    description: 'Hit Accept. Consumer gets your contact instantly. Job confirmed.',
   },
 ];
 
-function StepCard({
-  step,
-  index,
-  total,
-}: {
-  step: typeof consumerSteps[0];
-  index: number;
-  total: number;
-}) {
-  const Icon = step.icon;
-  return (
-    <div className="relative flex gap-4">
-      <div className="flex flex-col items-center">
-        <div className="flex size-10 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-bold flex-shrink-0">
-          {index + 1}
-        </div>
-        {index < total - 1 && <div className="w-0.5 flex-1 bg-border mt-2" />}
-      </div>
-
-      <div className="flex-1 pb-8">
-        <div className="flex items-center gap-3 mb-2">
-          {step.channelLogos ? (
-            <div className="flex items-center gap-1.5">
-              <Image src="/logos/whatsapp.png" alt="WhatsApp" width={28} height={28} className="rounded-md" />
-              <Image src="/logos/telegram.png" alt="Telegram" width={28} height={28} className="rounded-md" />
-            </div>
-          ) : Icon ? (
-            <div className="flex size-10 items-center justify-center rounded-lg bg-muted">
-              <Icon className="size-5 text-muted-foreground" />
-            </div>
-          ) : null}
-          <h3 className="font-semibold">{step.title}</h3>
-        </div>
-        <p className="text-muted-foreground text-sm leading-relaxed">{step.description}</p>
-      </div>
-    </div>
-  );
-}
-
 export function HowItWorks() {
   return (
-    <section id="how-it-works" className="py-16 md:py-24">
+    <section id="how-it-works" className="py-20 md:py-28">
       <div className="container mx-auto px-4">
-        <div className="mx-auto max-w-2xl text-center mb-12 md:mb-16">
-          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">How It Works</h2>
-          <p className="mt-4 text-lg text-muted-foreground">
-            Whether you need a service or provide one, Nida makes the connection seamless.
+
+        {/* Header */}
+        <div className="mb-16 md:mb-20">
+          <p className="mb-3 text-xs font-semibold tracking-[0.2em] uppercase text-muted-foreground/60">
+            The process
           </p>
+          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
+            How it works
+          </h2>
         </div>
 
-        <div className="grid gap-12 lg:grid-cols-2 lg:gap-16">
+        {/* Two columns */}
+        <div className="grid gap-16 lg:grid-cols-2 lg:gap-24">
+
+          {/* Consumer */}
           <div>
-            <div className="mb-8 inline-flex items-center gap-2 rounded-full bg-blue-100 dark:bg-blue-900/30 px-4 py-1.5 text-sm font-medium text-blue-700 dark:text-blue-300">
+            <p className="mb-10 text-xs font-semibold tracking-[0.15em] uppercase text-blue-500/70">
               For Consumers
-            </div>
-            <div className="space-y-0">
-              {consumerSteps.map((step, index) => (
-                <StepCard key={step.title} step={step} index={index} total={consumerSteps.length} />
+            </p>
+            <ol className="space-y-10">
+              {consumerSteps.map((step, i) => (
+                <li key={step.title} className="grid grid-cols-[2rem_1fr] gap-4">
+                  {/* Step number */}
+                  <span className="mt-0.5 text-sm font-medium text-muted-foreground/40 tabular-nums">
+                    0{i + 1}
+                  </span>
+                  <div>
+                    <div className="flex items-center gap-2.5 mb-1.5">
+                      <h3 className="font-semibold text-foreground">{step.title}</h3>
+                      {step.channelLogos && (
+                        <span className="flex items-center gap-1 ml-1">
+                          <Image src="/logos/whatsapp.png" alt="WhatsApp" width={16} height={16} className="rounded-sm opacity-80" />
+                          <Image src="/logos/telegram.png" alt="Telegram" width={16} height={16} className="rounded-sm opacity-80" />
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      {step.description}
+                    </p>
+                  </div>
+                </li>
               ))}
-            </div>
+            </ol>
           </div>
 
+          {/* Business */}
           <div>
-            <div className="mb-8 inline-flex items-center gap-2 rounded-full bg-green-100 dark:bg-green-900/30 px-4 py-1.5 text-sm font-medium text-green-700 dark:text-green-300">
+            <p className="mb-10 text-xs font-semibold tracking-[0.15em] uppercase text-green-500/70">
               For Businesses
-            </div>
-            <div className="space-y-0">
-              {businessSteps.map((step, index) => (
-                <StepCard
-                  key={step.title}
-                  step={{ ...step, channelLogos: false }}
-                  index={index}
-                  total={businessSteps.length}
-                />
+            </p>
+            <ol className="space-y-10">
+              {businessSteps.map((step, i) => (
+                <li key={step.title} className="grid grid-cols-[2rem_1fr] gap-4">
+                  <span className="mt-0.5 text-sm font-medium text-muted-foreground/40 tabular-nums">
+                    0{i + 1}
+                  </span>
+                  <div>
+                    <h3 className="font-semibold text-foreground mb-1.5">{step.title}</h3>
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      {step.description}
+                    </p>
+                  </div>
+                </li>
               ))}
-            </div>
+            </ol>
           </div>
+
         </div>
       </div>
     </section>
