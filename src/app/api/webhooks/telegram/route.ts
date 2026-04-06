@@ -76,6 +76,10 @@ async function handleMessage(message: TelegramMessage): Promise<void> {
 
   // Handle "no thanks" response to optional phone sharing
   if (text === '💬 No thanks, use Telegram only') {
+    // Clear the awaiting_phone flag
+    const redis = getRedis();
+    if (redis) await redis.del(`awaiting_phone:${chatId}`).catch(() => {});
+
     await sendTelegramReply(
       chatId,
       "No problem! You'll receive all updates right here in Telegram. 👍"
@@ -94,6 +98,20 @@ async function handleMessage(message: TelegramMessage): Promise<void> {
       });
     }
     return;
+  }
+
+  // Check if we're waiting for a manually typed phone number
+  // This handles the case where the user types their number instead of using the button
+  const phonePattern = /^\+?[\d\s\-\(\)]{7,15}$/;
+  if (phonePattern.test(text.trim())) {
+    const redis = getRedis();
+    const awaitingPhone = redis ? await redis.get(`awaiting_phone:${chatId}`).catch(() => null) : null;
+
+    if (awaitingPhone) {
+      await redis!.del(`awaiting_phone:${chatId}`).catch(() => {});
+      await saveTypedPhoneNumber(chatId, text.trim());
+      return;
+    }
   }
 
   // Handle /help command
@@ -288,6 +306,12 @@ async function sendOptionalPhoneRequest(chatId: string): Promise<void> {
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
   if (!botToken) return;
 
+  // Set Redis flag so manually typed numbers are intercepted (10 min TTL)
+  const redis = getRedis();
+  if (redis) {
+    await redis.set(`awaiting_phone:${chatId}`, '1', { ex: 600 }).catch(() => {});
+  }
+
   try {
     await fetch(
       `https://api.telegram.org/bot${botToken}/sendMessage`,
@@ -311,6 +335,76 @@ async function sendOptionalPhoneRequest(chatId: string): Promise<void> {
     );
   } catch (error) {
     console.error('Error sending optional phone request:', error);
+  }
+}
+
+/**
+ * Save a phone number that the user typed manually (instead of using the share button)
+ */
+async function saveTypedPhoneNumber(chatId: string, rawNumber: string): Promise<void> {
+  const supabase = createServiceClient();
+
+  // Normalize: strip spaces/dashes, ensure + prefix for international
+  let phone = rawNumber.replace(/[\s\-\(\)]/g, '');
+  if (!phone.startsWith('+')) {
+    // Qatar numbers: if 8 digits starting with 3/4/5/6/7, prefix with +974
+    if (/^[3-7]\d{7}$/.test(phone)) {
+      phone = '+974' + phone;
+    } else {
+      phone = '+' + phone;
+    }
+  }
+
+  const botToken = process.env.TELEGRAM_BOT_TOKEN;
+
+  // Try to update consumer by telegram_chat_id first
+  let { data: updated, error } = await supabase
+    .from('consumers')
+    .update({ phone })
+    .eq('telegram_chat_id', chatId)
+    .select()
+    .single();
+
+  // Fallback: try legacy tg: phone record
+  if (!updated) {
+    const result = await supabase
+      .from('consumers')
+      .update({ phone, telegram_chat_id: chatId })
+      .eq('phone', `tg:${chatId}`)
+      .select()
+      .single();
+    updated = result.data;
+    error = result.error;
+  }
+
+  if (error || !updated) {
+    console.error('Failed to save typed phone number:', error);
+    if (botToken) {
+      await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text: "❌ Sorry, I couldn't save that number. Please try the Share button above, or contact support.",
+          reply_markup: { remove_keyboard: true },
+        }),
+      });
+    }
+    return;
+  }
+
+  // Confirm and remove keyboard
+  if (botToken) {
+    await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: `✅ <b>Got it!</b>\n\nYour number (<code>${phone}</code>) has been saved. Providers can now reach you directly by phone.`,
+        parse_mode: 'HTML',
+        reply_markup: { remove_keyboard: true },
+      }),
+    });
   }
 }
 

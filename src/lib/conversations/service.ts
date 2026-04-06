@@ -133,6 +133,35 @@ export async function getOrCreateConversation(phone: string): Promise<Conversati
     return existing as Conversation;
   }
 
+  // Check for a recently completed conversation (within last 30 min) to carry context forward
+  // This lets the AI know what was just requested so it doesn't greet the user again
+  const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+  const { data: recentCompleted } = await supabase
+    .from('conversations')
+    .select('intent_id, messages')
+    .eq('phone', phone)
+    .eq('state', 'complete')
+    .gte('created_at', thirtyMinutesAgo)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single();
+
+  // Seed new conversation with context from the completed intent if available
+  let seedMessages: ConversationMessage[] = [];
+  if (recentCompleted?.intent_id) {
+    const { data: recentIntent } = await supabase
+      .from('intents')
+      .select('intent_data, status')
+      .eq('id', recentCompleted.intent_id)
+      .single();
+
+    if (recentIntent) {
+      const { category, location, urgency } = recentIntent.intent_data as { category: string; location: { zone: string }; urgency: string };
+      const contextNote = `[Context: This user just submitted a ${category} request in ${location?.zone} (${urgency}). Status: ${recentIntent.status}. They may be following up on that request or starting a new one.]`;
+      seedMessages = [{ role: 'assistant', content: contextNote, timestamp: new Date().toISOString() }];
+    }
+  }
+
   // Create new conversation
   const { data: newConversation, error } = await supabase
     .from('conversations')
@@ -141,7 +170,7 @@ export async function getOrCreateConversation(phone: string): Promise<Conversati
       phone,
       state: 'greeting',
       partial_intent: {},
-      messages: [],
+      messages: seedMessages,
     })
     .select()
     .single();
