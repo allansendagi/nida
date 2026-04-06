@@ -13,7 +13,10 @@
       "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\({k:v for k,v in d.get\\('scripts',{}\\).items\\(\\)}, indent=2\\)\\)\")",
       "Bash(grep -n \"service_categories\" /Users/allansendagi/Desktop/nida/supabase/migrations/*.sql)",
       "Bash(npx tsc:*)",
-      "Bash(echo \"EXIT:$?\")"
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
     ]
   }
 }
