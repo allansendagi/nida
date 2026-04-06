@@ -1,57 +1,75 @@
+import Image from 'next/image';
 import Link from 'next/link';
-import { Button } from '@/components/ui/button';
-import { ArrowRight, Mail } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
+
+const WHATSAPP_URL = process.env.NEXT_PUBLIC_WHATSAPP_URL || 'https://wa.me/97412345678';
+const TELEGRAM_URL = process.env.NEXT_PUBLIC_TELEGRAM_BOT_URL || 'https://t.me/NidaQABot';
 
 export function FinalCTA() {
   return (
-    <section className="py-16 md:py-24">
+    <section className="py-16 md:py-24 bg-gray-950">
       <div className="container mx-auto px-4">
-        <div className="relative mx-auto max-w-4xl overflow-hidden rounded-2xl bg-gradient-to-br from-primary to-primary/80 p-8 md:p-12 lg:p-16 text-primary-foreground">
-          {/* Background decoration */}
-          <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0zNiAxOGMtOS45NDEgMC0xOCA4LjA1OS0xOCAxOHM4LjA1OSAxOCAxOCAxOGM5Ljk0MSAwIDE4LTguMDU5IDE4LTE4cy04LjA1OS0xOC0xOC0xOHptMCAzMmMtNy43MzIgMC0xNC02LjI2OC0xNC0xNHM2LjI2OC0xNCAxNC0xNHMxNCA2LjI2OCAxNCAxNC02LjI2OCAxNC0xNCAxNHoiIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iLjAyIi8+PC9nPjwvc3ZnPg==')] opacity-50" />
-
-          <div className="relative text-center">
-            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl">
-              Ready to experience smarter home services?
-            </h2>
-            <p className="mx-auto mt-4 max-w-xl text-lg text-primary-foreground/80">
-              Join Nida today and discover how AI-powered matching transforms the way home services work.
-            </p>
-
-            {/* Dual CTAs */}
-            <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
-              <Link href="/auth/login">
-                <Button
-                  size="lg"
-                  variant="secondary"
-                  className="gap-2 min-w-[180px]"
+        <div className="grid gap-6 lg:grid-cols-2 max-w-5xl mx-auto">
+          {/* Consumer CTA */}
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#075E54] to-[#128C7E] p-8 md:p-10">
+            <div className="absolute -top-8 -right-8 w-40 h-40 rounded-full bg-white/5" />
+            <div className="relative">
+              <div className="mb-4 flex size-14 items-center justify-center rounded-2xl bg-white/10">
+                <Image src="/logos/whatsapp.png" alt="WhatsApp" width={32} height={32} className="rounded-lg" />
+              </div>
+              <h3 className="text-2xl font-bold text-white">Need a service?</h3>
+              <p className="mt-2 text-white/70 text-sm leading-relaxed">
+                Just send a message. Nida handles matching, confirmation, and contact exchange — in under 15 minutes.
+              </p>
+              <div className="mt-6 flex flex-col gap-2">
+                <a
+                  href={WHATSAPP_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 rounded-xl bg-[#25D366] px-5 py-3 text-sm font-semibold text-white hover:bg-[#20bb5a] transition-colors"
                 >
-                  I Need a Service
-                  <ArrowRight className="size-4" />
-                </Button>
-              </Link>
-              <Link href="/auth/login">
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="gap-2 min-w-[180px] border-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground"
+                  <Image src="/logos/whatsapp.png" alt="" width={18} height={18} className="rounded-sm" />
+                  Open WhatsApp
+                </a>
+                <a
+                  href={TELEGRAM_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 rounded-xl bg-white/10 px-5 py-3 text-sm font-semibold text-white hover:bg-white/20 transition-colors"
                 >
-                  I&apos;m a Business
-                  <ArrowRight className="size-4" />
-                </Button>
-              </Link>
+                  <Image src="/logos/telegram.png" alt="" width={18} height={18} className="rounded-sm" />
+                  Open Telegram
+                </a>
+              </div>
             </div>
+          </div>
 
-            {/* Contact option */}
-            <div className="mt-8 flex items-center justify-center gap-2 text-sm text-primary-foreground/70">
-              <Mail className="size-4" />
-              <span>Have questions?</span>
-              <a
-                href="mailto:hello@nida.qa"
-                className="underline underline-offset-4 hover:text-primary-foreground"
-              >
-                Contact us
-              </a>
+          {/* Business CTA */}
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-gray-800 to-gray-900 border border-white/10 p-8 md:p-10">
+            <div className="absolute -top-8 -right-8 w-40 h-40 rounded-full bg-white/5" />
+            <div className="relative">
+              <div className="mb-4 flex size-14 items-center justify-center rounded-2xl bg-white/10">
+                <span className="text-3xl">🏢</span>
+              </div>
+              <h3 className="text-2xl font-bold text-white">Running a service business?</h3>
+              <p className="mt-2 text-white/50 text-sm leading-relaxed">
+                Join Nida&apos;s provider network. Get pre-qualified leads delivered to WhatsApp or Telegram with one-tap accept.
+              </p>
+              <div className="mt-6 flex flex-col gap-2">
+                <Link
+                  href="/auth/login"
+                  className="flex items-center justify-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-semibold text-gray-900 hover:bg-gray-100 transition-colors"
+                >
+                  Register Your Business
+                  <ArrowRight className="size-4" />
+                </Link>
+                <a
+                  href="mailto:hello@nida.qa"
+                  className="flex items-center justify-center gap-2 rounded-xl bg-white/10 px-5 py-3 text-sm font-semibold text-white/70 hover:bg-white/15 transition-colors"
+                >
+                  Talk to us first
+                </a>
+              </div>
             </div>
           </div>
         </div>

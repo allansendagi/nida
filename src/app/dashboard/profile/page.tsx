@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { ProfileEditor } from '@/components/dashboard/profile-editor';
 import { TelegramConnect } from '@/components/dashboard/telegram-connect';
+import { NomosManager } from '@/components/dashboard/nomos-manager';
 
 export default async function ProfilePage() {
   const supabase = await createClient();
@@ -37,6 +38,14 @@ export default async function ProfilePage() {
       <div>
         <h1 className="text-2xl font-bold mb-6">Business Profile</h1>
         <ProfileEditor business={business} />
+      </div>
+
+      <div>
+        <h2 className="text-lg font-semibold mb-3">NOMOS Contract</h2>
+        <NomosManager
+          hasContract={!!business.nomos_contract}
+          businessName={business.display_name}
+        />
       </div>
 
       <div>

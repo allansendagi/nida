@@ -1,5 +1,6 @@
 export { Navbar } from './Navbar';
 export { Hero } from './Hero';
+export { StatsBar } from './StatsBar';
 export { HowItWorks } from './HowItWorks';
 export { WhyNida } from './WhyNida';
 export { NomosProtocol } from './NomosProtocol';
