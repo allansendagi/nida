@@ -113,6 +113,10 @@ async function processWhatsAppMessage(
   console.log(`Processing WhatsApp message ${messageId} from ${phone}`);
 
   try {
+    // Send immediate acknowledgment so user knows Nida received their message
+    // WhatsApp has no native typing indicator, so this bridges the gap
+    await sendWhatsAppReply(phone, "⏳ Nida is on it...");
+
     // Process through conversation service (AI intake)
     const result = await processMessage(phone, text);
 
@@ -122,7 +126,7 @@ async function processWhatsAppMessage(
       responseLength: result.response.length,
     });
 
-    // Send response back to user via WhatsApp
+    // Send actual response back to user via WhatsApp
     const sendResult = await sendWhatsAppReply(phone, result.response);
 
     if (sendResult.success) {

@@ -116,12 +116,15 @@ export async function getOrCreateConversation(phone: string): Promise<Conversati
   // Get or create consumer first
   const consumer = await getOrCreateConsumer(phone);
 
-  // Look for active conversation (not complete)
+  // Look for active conversation (not complete) created within the last 2 hours
+  // Conversations older than 2 hours are considered stale — start fresh
+  const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
   const { data: existing } = await supabase
     .from('conversations')
     .select('*')
     .eq('phone', phone)
     .neq('state', 'complete')
+    .gte('created_at', twoHoursAgo)
     .order('created_at', { ascending: false })
     .limit(1)
     .single();
@@ -296,11 +299,16 @@ async function completeConversation(
 ): Promise<{ intent: Intent; response: string }> {
   const supabase = createServiceClient();
 
+  // Normalize zone: AI may return "West Bay" or "WestBay" instead of "west_bay"
+  const normalizedZone = (intentData.location.zone || '')
+    .toLowerCase()
+    .replace(/\s+/g, '_');
+
   // Build full intent data
   const fullIntentData: IntentData = {
     category: intentData.category,
     location: {
-      zone: intentData.location.zone,
+      zone: normalizedZone,
       text: intentData.location.text,
     },
     budget: intentData.budget,

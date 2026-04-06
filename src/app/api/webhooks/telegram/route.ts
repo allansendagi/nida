@@ -122,6 +122,16 @@ async function handleMessage(message: TelegramMessage): Promise<void> {
 
   console.log(`Processing Telegram message from ${chatId}: ${text}`);
 
+  // Send typing indicator while processing — shows "typing..." bubble to user
+  const botToken = process.env.TELEGRAM_BOT_TOKEN;
+  if (botToken) {
+    fetch(`https://api.telegram.org/bot${botToken}/sendChatAction`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, action: 'typing' }),
+    }).catch(() => {}); // fire-and-forget, don't block on failure
+  }
+
   try {
     // Use chat ID as the phone identifier for Telegram users
     // Prefix with 'tg:' to distinguish from phone numbers

@@ -81,11 +81,11 @@ export async function POST(request: Request) {
       );
     }
 
-    // 3. Run DISCOVER - get all approved businesses
+    // 3. Run DISCOVER - get all non-rejected businesses (consistent with conversation flow)
     const { data: businesses, error: bizError } = await supabase
       .from('businesses')
       .select('*')
-      .eq('approval_status', 'approved');
+      .neq('approval_status', 'rejected');
 
     if (bizError) {
       return NextResponse.json(
