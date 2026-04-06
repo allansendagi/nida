@@ -142,7 +142,7 @@ export async function notifyConsumerEscalating(consumerId: string): Promise<void
  * Notify a consumer that no providers were found for their request,
  * with a promise to alert them when one becomes available.
  */
-export async function notifyConsumerNoProviders(consumerId: string, intentId: string): Promise<void> {
+export async function notifyConsumerNoProviders(consumerId: string, _intentId: string): Promise<void> {
   const supabase = createServiceClient();
 
   try {

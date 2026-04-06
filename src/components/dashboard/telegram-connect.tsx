@@ -34,7 +34,7 @@ export function TelegramConnect({ alreadyLinked }: TelegramConnectProps) {
     return (
       <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-4 py-3">
         <span>✅</span>
-        <span>Telegram is connected — you'll receive leads there.</span>
+        <span>Telegram is connected — you&apos;ll receive leads there.</span>
         <button
           onClick={generateCode}
           className="ml-auto text-green-800 underline hover:no-underline text-xs"

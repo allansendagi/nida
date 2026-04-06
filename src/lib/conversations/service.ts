@@ -228,15 +228,11 @@ export async function processMessage(
 
     // Check if AI has enough info to create intent
     if (intakeResult.complete && intakeResult.intent_data) {
-      // Send the AI's "searching now" confirmation immediately before the async matching
-      const searchingMessage = intakeResult.response || "On it! Searching for the best providers for you...";
-
       // Create the intent and start matching
       const { intent, response } = await completeConversation(
         conversation.id,
         updatedConv.consumer_id,
-        intakeResult.intent_data as IntentDataForIntake,
-        searchingMessage
+        intakeResult.intent_data as IntentDataForIntake
       );
 
       // Add assistant response to conversation
@@ -294,8 +290,7 @@ export async function processMessage(
 async function completeConversation(
   conversationId: string,
   consumerId: string,
-  intentData: IntentDataForIntake,
-  searchingMessage?: string
+  intentData: IntentDataForIntake
 ): Promise<{ intent: Intent; response: string }> {
   const supabase = createServiceClient();
 
