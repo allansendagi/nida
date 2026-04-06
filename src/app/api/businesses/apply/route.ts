@@ -28,12 +28,13 @@ export async function POST(request: Request) {
       pricing,
       leadTimeHours,
       warrantyDays,
+      nomosContract: uploadedContract,
     } = body;
 
-    // Validate required fields
-    if (!displayName || !phone || !crNumber || !category || !capabilities?.length || !zones?.length) {
+    // Validate shared required fields
+    if (!displayName || !phone || !crNumber) {
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        { error: 'Missing required fields: displayName, phone, crNumber' },
         { status: 400 }
       );
     }
@@ -53,9 +54,58 @@ export async function POST(request: Request) {
       );
     }
 
+    // --- Path B: uploaded .nomos contract ---
+    if (uploadedContract) {
+      const c = uploadedContract as Record<string, unknown>;
+      const serviceArea = c.service_area as Record<string, unknown> | undefined;
+      const service = c.service as Record<string, unknown> | undefined;
+
+      const contractZones = (serviceArea?.zones as string[]) || [];
+      const contractCategory = (service?.category as string) || '';
+      const contractCapabilities = (service?.capabilities as string[]) || [];
+
+      // Derive flat categories array (e.g. ["home_services.hvac.repair"])
+      const derivedCategories = contractCapabilities.length > 0
+        ? contractCapabilities.map((cap) => `${contractCategory.split('.').slice(0, 2).join('.')}.${cap}`)
+        : [contractCategory];
+
+      const { data, error } = await serviceClient
+        .from('businesses')
+        .insert({
+          user_id: user.id,
+          nomos_contract: uploadedContract,
+          phone,
+          email: email || null,
+          cr_number: crNumber,
+          display_name: displayName,
+          categories: derivedCategories,
+          service_zones: contractZones,
+          subscription_tier: 'trial',
+          approval_status: 'pending',
+          submitted_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error creating business (nomos upload):', error);
+        return NextResponse.json({ error: error.message }, { status: 500 });
+      }
+
+      return NextResponse.json({ business: data });
+    }
+
+    // --- Path A: form-based contract build ---
+    if (!category || !capabilities?.length || !zones?.length) {
+      return NextResponse.json(
+        { error: 'Missing required fields: category, capabilities, zones' },
+        { status: 400 }
+      );
+    }
+
     const entityId = crypto.randomUUID();
 
-    // Build the NOMOS contract
+    // Build the NOMOS contract from form fields
     const nomosContract: NomosContract = {
       nomos_version: NOMOS_VERSION,
       contract_type: 'service_offering',

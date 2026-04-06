@@ -9,7 +9,7 @@ export function NomosProtocol() {
           <div className="text-center mb-12 md:mb-16">
             <div className="mb-4 inline-flex items-center gap-2 rounded-full border bg-background px-4 py-1.5 text-sm font-medium">
               <FileCode className="size-4" />
-              Technical Differentiator
+              For Home Services
             </div>
             <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
               The NOMOS Protocol
