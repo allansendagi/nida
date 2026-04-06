@@ -2,7 +2,7 @@ import Image from 'next/image';
 import { ChatDemo } from './ChatDemo';
 
 const WHATSAPP_URL = process.env.NEXT_PUBLIC_WHATSAPP_URL || 'https://wa.me/97412345678';
-const TELEGRAM_URL = process.env.NEXT_PUBLIC_TELEGRAM_BOT_URL || 'https://t.me/NidaQABot';
+const TELEGRAM_URL = process.env.NEXT_PUBLIC_TELEGRAM_BOT_URL || 'https://t.me/nida_assistant_bot';
 
 export function Hero() {
   return (
