@@ -8,7 +8,7 @@ import { Menu, X } from 'lucide-react';
 const navLinks = [
   { href: '#how-it-works', label: 'How It Works' },
   { href: '#why-nida', label: 'Why Nida' },
-  { href: '#nomos', label: 'NOMOS Protocol' },
+  { href: '#nomos', label: 'NOMOS' },
   { href: '#faq', label: 'FAQ' },
 ];
 
@@ -57,6 +57,13 @@ export function Navbar() {
 
           {/* Desktop CTAs */}
           <div className="hidden md:flex items-center gap-3">
+            <Link
+              href="/nomos-builder"
+              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5"
+            >
+              <span className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded">.nomos</span>
+              Builder
+            </Link>
             <Link href="/auth/login">
               <Button variant="outline" size="sm">
                 I Need a Service

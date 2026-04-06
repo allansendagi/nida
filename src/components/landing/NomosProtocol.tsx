@@ -1,122 +1,101 @@
-import { FileCode, Cpu, ArrowRight, CheckCircle2 } from 'lucide-react';
+import Link from 'next/link';
 
 export function NomosProtocol() {
   return (
-    <section id="nomos" className="py-16 md:py-24">
+    <section id="nomos" className="py-20 md:py-28 border-t">
       <div className="container mx-auto px-4">
         <div className="mx-auto max-w-5xl">
-          {/* Section header */}
-          <div className="text-center mb-12 md:mb-16">
-            <div className="mb-4 inline-flex items-center gap-2 rounded-full border bg-background px-4 py-1.5 text-sm font-medium">
-              <FileCode className="size-4" />
-              For Home Services
+
+          {/* Header */}
+          <div className="grid gap-10 lg:grid-cols-2 lg:gap-16 items-start mb-12">
+            <div>
+              <p className="mb-3 text-xs font-semibold tracking-[0.2em] uppercase text-muted-foreground/60">
+                The Protocol
+              </p>
+              <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
+                NOMOS — your service contract for the AI era.
+              </h2>
             </div>
-            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-              The NOMOS Protocol
-            </h2>
-            <p className="mx-auto mt-4 max-w-2xl text-lg text-muted-foreground">
-              Machine-readable service contracts that enable true AI-powered matching.
-            </p>
+            <div className="flex flex-col gap-4 justify-center">
+              <p className="text-muted-foreground leading-relaxed">
+                A <code className="text-xs bg-muted px-1.5 py-0.5 rounded font-mono">.nomos</code> file
+                is a machine-readable contract that tells AI agents exactly what you offer, where, at what price,
+                and when to act autonomously on your behalf. Unlike a database entry locked inside one platform,
+                it&apos;s a portable file you own — upload it to any NOMOS-compatible marketplace.
+              </p>
+              <Link
+                href="/nomos-builder"
+                className="inline-flex items-center gap-2 self-start rounded-xl bg-foreground px-5 py-3 text-sm font-semibold text-background hover:opacity-90 transition-opacity"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                </svg>
+                Build your .nomos contract
+              </Link>
+            </div>
           </div>
 
-          {/* Visual flow */}
-          <div className="relative rounded-2xl border bg-card p-6 md:p-10">
-            {/* Flow diagram */}
-            <div className="grid gap-6 md:grid-cols-3 md:gap-4">
-              {/* Step 1: Contract */}
-              <div className="relative flex flex-col items-center text-center">
-                <div className="mb-4 flex size-16 items-center justify-center rounded-2xl bg-primary/10">
-                  <FileCode className="size-8 text-primary" />
-                </div>
-                <h3 className="font-semibold mb-2">Service Contract</h3>
-                <p className="text-sm text-muted-foreground">
-                  Businesses define capabilities, zones, and pricing in structured NOMOS format
-                </p>
-                {/* Arrow for desktop */}
-                <div className="hidden md:flex absolute right-0 top-8 translate-x-1/2">
-                  <ArrowRight className="size-6 text-muted-foreground/50" />
-                </div>
+          {/* Code block — updated to real schema */}
+          <div className="rounded-2xl bg-gray-950 border border-white/[0.06] overflow-hidden">
+            {/* Toolbar */}
+            <div className="flex items-center justify-between px-5 py-3 border-b border-white/[0.06]">
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-red-500/50" />
+                <span className="w-3 h-3 rounded-full bg-yellow-500/50" />
+                <span className="w-3 h-3 rounded-full bg-green-500/50" />
+                <span className="ml-2 text-xs text-white/30 font-mono">al_falah_ac.nomos</span>
               </div>
-
-              {/* Step 2: AI Matching */}
-              <div className="relative flex flex-col items-center text-center">
-                <div className="mb-4 flex size-16 items-center justify-center rounded-2xl bg-purple-100 dark:bg-purple-900/30">
-                  <Cpu className="size-8 text-purple-600 dark:text-purple-400" />
-                </div>
-                <h3 className="font-semibold mb-2">AI Matching Engine</h3>
-                <p className="text-sm text-muted-foreground">
-                  Consumer intents are parsed and matched against provider contracts in real-time
-                </p>
-                {/* Arrow for desktop */}
-                <div className="hidden md:flex absolute right-0 top-8 translate-x-1/2">
-                  <ArrowRight className="size-6 text-muted-foreground/50" />
-                </div>
-              </div>
-
-              {/* Step 3: Execution */}
-              <div className="flex flex-col items-center text-center">
-                <div className="mb-4 flex size-16 items-center justify-center rounded-2xl bg-green-100 dark:bg-green-900/30">
-                  <CheckCircle2 className="size-8 text-green-600 dark:text-green-400" />
-                </div>
-                <h3 className="font-semibold mb-2">Service Execution</h3>
-                <p className="text-sm text-muted-foreground">
-                  Matched providers receive leads, accept jobs, and deliver services
-                </p>
-              </div>
+              <Link
+                href="/nomos-builder"
+                className="text-xs text-white/30 hover:text-white/60 transition-colors"
+              >
+                Build yours →
+              </Link>
             </div>
 
-            {/* Code preview */}
-            <div className="mt-10 rounded-lg bg-foreground/5 p-4 md:p-6 overflow-x-auto">
-              <div className="flex items-center gap-2 mb-4 text-sm text-muted-foreground">
-                <div className="flex gap-1.5">
-                  <div className="size-3 rounded-full bg-red-500/50" />
-                  <div className="size-3 rounded-full bg-yellow-500/50" />
-                  <div className="size-3 rounded-full bg-green-500/50" />
-                </div>
-                <span className="font-mono">nomos-contract.json</span>
-              </div>
-              <pre className="text-xs md:text-sm font-mono text-muted-foreground">
+            {/* Code */}
+            <pre className="overflow-x-auto p-5 text-xs font-mono leading-relaxed text-white/50">
 {`{
-  "version": "0.1.0",
-  "provider": {
-    "name": "Premium AC Services",
-    "categories": ["AC_REPAIR", "AC_MAINTENANCE"],
-    "zones": ["doha_west", "al_rayyan"],
-    "pricing": {
-      "inspection": { "min": 150, "max": 200, "currency": "QAR" },
-      "repair": { "min": 300, "max": 800, "currency": "QAR" }
-    },
-    "availability": "24_7"
+  <span class="text-blue-300/70">"nomos_version"</span>: <span class="text-emerald-300/70">"0.1.0"</span>,
+  <span class="text-blue-300/70">"service"</span>: {
+    <span class="text-blue-300/70">"category"</span>: <span class="text-emerald-300/70">"home_services.hvac.repair"</span>,
+    <span class="text-blue-300/70">"capabilities"</span>: [<span class="text-emerald-300/70">"repair"</span>, <span class="text-emerald-300/70">"installation"</span>, <span class="text-emerald-300/70">"maintenance"</span>]
+  },
+  <span class="text-blue-300/70">"service_area"</span>: { <span class="text-blue-300/70">"zones"</span>: [<span class="text-emerald-300/70">"west_bay"</span>, <span class="text-emerald-300/70">"the_pearl"</span>, <span class="text-emerald-300/70">"lusail"</span>] },
+  <span class="text-blue-300/70">"pricing"</span>: { <span class="text-blue-300/70">"model"</span>: <span class="text-emerald-300/70">"tiered"</span>, <span class="text-blue-300/70">"urgency_multiplier"</span>: { <span class="text-blue-300/70">"same_day"</span>: <span class="text-purple-300/70">1.5</span> } },
+  <span class="text-blue-300/70">"availability"</span>: { <span class="text-blue-300/70">"lead_time_hours"</span>: <span class="text-purple-300/70">2</span>, <span class="text-blue-300/70">"capacity"</span>: { <span class="text-blue-300/70">"max_daily_jobs"</span>: <span class="text-purple-300/70">5</span> } },
+  <span class="text-blue-300/70">"agent_instructions"</span>: {
+    <span class="text-blue-300/70">"auto_accept"</span>: { <span class="text-blue-300/70">"enabled"</span>: <span class="text-amber-300/70">true</span>, <span class="text-blue-300/70">"conditions"</span>: { <span class="text-blue-300/70">"min_lead_time_hours"</span>: <span class="text-purple-300/70">2</span> } },
+    <span class="text-blue-300/70">"escalate_to_human"</span>: { <span class="text-blue-300/70">"triggers"</span>: [<span class="text-emerald-300/70">"high_value"</span>, <span class="text-emerald-300/70">"first_time_customer"</span>] },
+    <span class="text-blue-300/70">"max_negotiation_rounds"</span>: <span class="text-purple-300/70">3</span>
   }
 }`}
-              </pre>
-            </div>
+            </pre>
           </div>
 
-          {/* Benefits list */}
-          <div className="mt-8 grid gap-4 sm:grid-cols-3">
-            <div className="flex items-start gap-3">
-              <CheckCircle2 className="size-5 text-green-600 mt-0.5 shrink-0" />
-              <div>
-                <p className="font-medium">Precise Matching</p>
-                <p className="text-sm text-muted-foreground">No guesswork. AI knows exactly what each provider offers.</p>
+          {/* Three points — no icons, clean */}
+          <div className="mt-10 grid gap-px sm:grid-cols-3 rounded-xl overflow-hidden border border-border">
+            {[
+              {
+                title: 'Portable',
+                desc: 'Your contract belongs to you. Upload the same file to any NOMOS-compatible platform.',
+              },
+              {
+                title: 'Autonomous',
+                desc: 'Define exactly when your AI agent acts — and when it asks you first.',
+              },
+              {
+                title: 'Precise',
+                desc: 'No guesswork matching. AI reads the contract and scores your fit exactly.',
+              },
+            ].map((item) => (
+              <div key={item.title} className="bg-muted/30 px-6 py-5">
+                <p className="font-semibold mb-1">{item.title}</p>
+                <p className="text-sm text-muted-foreground leading-relaxed">{item.desc}</p>
               </div>
-            </div>
-            <div className="flex items-start gap-3">
-              <CheckCircle2 className="size-5 text-green-600 mt-0.5 shrink-0" />
-              <div>
-                <p className="font-medium">Transparent Pricing</p>
-                <p className="text-sm text-muted-foreground">Price ranges defined upfront. No surprises for consumers.</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3">
-              <CheckCircle2 className="size-5 text-green-600 mt-0.5 shrink-0" />
-              <div>
-                <p className="font-medium">Scalable Infrastructure</p>
-                <p className="text-sm text-muted-foreground">Built for growth. Add new categories and markets easily.</p>
-              </div>
-            </div>
+            ))}
           </div>
+
         </div>
       </div>
     </section>

@@ -61,12 +61,15 @@ export function FinalCTA() {
               >
                 Register your business
               </Link>
-              <a
-                href="mailto:hello@nida.qa"
-                className="flex items-center justify-center rounded-xl border border-white/10 px-5 py-3 text-sm font-medium text-white/50 hover:text-white/70 hover:border-white/20 transition-colors"
+              <Link
+                href="/nomos-builder"
+                className="flex items-center justify-center gap-2 rounded-xl border border-white/10 px-5 py-3 text-sm font-medium text-white/50 hover:text-white/70 hover:border-white/20 transition-colors"
               >
-                Talk to us first
-              </a>
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Build a .nomos contract first
+              </Link>
             </div>
           </div>
 
