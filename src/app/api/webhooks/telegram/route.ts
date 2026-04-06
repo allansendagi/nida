@@ -260,13 +260,57 @@ async function handleCallbackQuery(callbackQuery: TelegramCallbackQuery): Promis
         return;
       }
 
+      // Fetch negotiation + consumer contact to share with business
+      const supabase = createServiceClient();
+      const { data: neg } = await supabase
+        .from('negotiations')
+        .select('*, intent:intents(*, consumer:consumers(*))')
+        .eq('id', negotiationId)
+        .single();
+
+      // Build consumer contact message for the business
+      let contactLine = 'Customer is on Telegram — they will receive your contact details.';
+      if (neg?.intent?.consumer) {
+        const c = neg.intent.consumer;
+        const consumerPhone = c.phone;
+        const telegramId = c.telegram_chat_id || (consumerPhone?.startsWith('tg:') ? consumerPhone.slice(3) : null);
+        if (consumerPhone && !consumerPhone.startsWith('tg:')) {
+          contactLine = `📞 Customer phone: <b>${consumerPhone}</b>`;
+        } else if (telegramId) {
+          contactLine = `💬 Customer is Telegram-only — they've been sent your contact details.`;
+        }
+      }
+
       await telegramAdapter.editMessageText(
         chatId,
         messageId,
-        '✅ <b>Lead Accepted!</b>\n\nYou\'ve claimed this lead. The customer\'s contact details will be shared with you.\n\nPlease reach out to them promptly — they\'re waiting!'
+        `✅ <b>Lead Accepted!</b>\n\n${contactLine}\n\nPlease reach out to them promptly — they're waiting!`
       );
 
       await telegramAdapter.answerCallbackQuery(callbackId, '✅ Lead accepted!');
+
+      // Create execution record so dashboard shows contact info
+      if (neg?.intent) {
+        const { generateExecutionId } = await import('@/lib/utils');
+        void supabase.from('executions').insert({
+          execution_id: generateExecutionId(),
+          negotiation_id: negotiationId,
+          agreed_terms: { price: 0, currency: 'QAR', date: new Date().toISOString(), warranty_days: 0, payment_method: 'tbd', cancellation: { free_until: new Date().toISOString(), fee: 0 } },
+          status: 'confirmed',
+          consumer_contact: {
+            name: neg.intent.consumer?.name || 'Customer',
+            ...(neg.intent.consumer?.phone && !neg.intent.consumer.phone.startsWith('tg:')
+              ? { phone: neg.intent.consumer.phone }
+              : {}),
+            ...(neg.intent.consumer?.telegram_chat_id
+              ? { telegram_chat_id: neg.intent.consumer.telegram_chat_id, contact_method: 'telegram' }
+              : {}),
+          },
+        });
+
+        // Update intent to executing
+        await supabase.from('intents').update({ status: 'executing' }).eq('id', neg.intent.id);
+      }
 
       // Notify the consumer via their channel (Telegram or WhatsApp)
       await notifyConsumerAccepted(negotiationId);
@@ -422,29 +466,56 @@ async function handleContactSharing(chatId: string, contact: TelegramContact): P
 
   console.log(`Received phone number from Telegram ${chatId}: ${phoneNumber}`);
 
-  // Try to update by telegram_chat_id first (new format)
-  let { data: updated, error } = await supabase
+  // Check if this phone already exists in the table (UNIQUE constraint)
+  const { data: existingWithPhone } = await supabase
     .from('consumers')
-    .update({ phone: phoneNumber })
-    .eq('telegram_chat_id', chatId)
-    .select()
+    .select('id, telegram_chat_id')
+    .eq('phone', phoneNumber)
     .single();
 
-  // If no rows updated, try by phone field (legacy format)
-  if (!updated) {
-    const result = await supabase
+  let updated = false;
+
+  if (existingWithPhone) {
+    // Phone already exists — link telegram_chat_id to that consumer (same person, different session)
+    const { error } = await supabase
       .from('consumers')
-      .update({ phone: phoneNumber, telegram_chat_id: chatId })
-      .eq('phone', `tg:${chatId}`)
+      .update({ telegram_chat_id: chatId })
+      .eq('id', existingWithPhone.id);
+
+    if (!error) {
+      updated = true;
+      // Clean up the duplicate tg: consumer record
+      await supabase
+        .from('consumers')
+        .delete()
+        .eq('telegram_chat_id', chatId)
+        .neq('id', existingWithPhone.id);
+    }
+  } else {
+    // No conflict — update the consumer's phone directly
+    const { data: byTelegram } = await supabase
+      .from('consumers')
+      .update({ phone: phoneNumber })
+      .eq('telegram_chat_id', chatId)
       .select()
       .single();
 
-    updated = result.data;
-    error = result.error;
+    if (byTelegram) {
+      updated = true;
+    } else {
+      // Fallback: try legacy tg: phone format
+      const { data: byPhone } = await supabase
+        .from('consumers')
+        .update({ phone: phoneNumber, telegram_chat_id: chatId })
+        .eq('phone', `tg:${chatId}`)
+        .select()
+        .single();
+      if (byPhone) updated = true;
+    }
   }
 
-  if (error || !updated) {
-    console.error('Failed to update consumer phone:', error);
+  if (!updated) {
+    console.error(`Failed to save phone for chat ${chatId}: ${phoneNumber}`);
     await sendTelegramReply(
       chatId,
       "Sorry, I couldn't save your phone number. Please try again or type it manually."
