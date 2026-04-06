@@ -121,7 +121,9 @@ export async function dispatchNotifications(
               .update({ notified_at: new Date().toISOString() })
               .eq('id', negotiation.id);
           }
-          break; // Success on one channel is enough
+          // For urgent leads (asap/same_day), blast all channels — don't stop at first success
+          const isUrgent = intentData.urgency === 'asap' || intentData.urgency === 'same_day';
+          if (!isUrgent) break; // Non-urgent: first success is enough
         } else {
           console.error(`Failed to send ${channel} notification:`, result.error);
         }
