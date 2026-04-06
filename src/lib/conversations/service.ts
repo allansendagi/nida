@@ -334,10 +334,11 @@ async function completeConversation(
     .eq('id', conversationId);
 
   // Run business matching (DISCOVER phase)
+  // Include all non-rejected businesses so existing providers are matched
   const { data: businesses } = await supabase
     .from('businesses')
     .select('*')
-    .eq('approval_status', 'approved');
+    .neq('approval_status', 'rejected');
 
   let matches = matchBusinessesToIntent(businesses || [], fullIntentData, 5);
   matches = filterByLeadTime(matches, fullIntentData.urgency);

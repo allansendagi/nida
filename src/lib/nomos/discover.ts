@@ -33,7 +33,38 @@ export function matchBusinessesToIntent(
     console.log(`[DISCOVER]   Categories: ${JSON.stringify(business.categories)}`);
     console.log(`[DISCOVER]   Service zones: ${JSON.stringify(business.service_zones)}`);
 
-    const contract = business.nomos_contract as NomosContract;
+    const contract = business.nomos_contract as NomosContract | null;
+
+    // Businesses without NOMOS contracts are matched using basic fields only
+    if (!contract) {
+      const categoryScore = scoreCategoryMatchBasic(intent.category, business);
+      const zoneScore = scoreZoneMatchBasic(intent.location.zone, business);
+
+      if (categoryScore === 0 || zoneScore === 0) {
+        console.log(`[DISCOVER]   ✗ Skipped (no contract, category=${categoryScore}, zone=${zoneScore})`);
+        continue;
+      }
+
+      const breakdown: ScoreBreakdown = {
+        category_match: Math.round(categoryScore * 100),
+        zone_match: Math.round(zoneScore * 100),
+        price_fit: 50, // neutral when no pricing data
+        capacity: 70,  // assume available when no capacity data
+        trust_score: Math.round(scoreTrustScore(business.trust_score) * 100),
+      };
+      const score = Math.round((
+        categoryScore * WEIGHTS.category_match +
+        zoneScore * WEIGHTS.zone_match +
+        0.5 * WEIGHTS.price_fit +
+        0.7 * WEIGHTS.capacity +
+        scoreTrustScore(business.trust_score) * WEIGHTS.trust_score
+      ) * 100);
+
+      results.push({ business, score, breakdown });
+      console.log(`[DISCOVER]   ✓ Matched (no contract) with score: ${score}`);
+      continue;
+    }
+
     const breakdown = calculateScoreBreakdown(contract, intent, business);
 
     console.log(`[DISCOVER]   Scores: category=${breakdown.category_match.toFixed(2)}, zone=${breakdown.zone_match.toFixed(2)}`);
@@ -67,20 +98,22 @@ export function matchBusinessesToIntent(
     console.log(`[DISCOVER] Parent category: ${parentCategory}`);
 
     for (const business of businesses) {
-      const contract = business.nomos_contract as NomosContract;
+      const contract = business.nomos_contract as NomosContract | null;
       const businessCategories = business.categories || [];
 
       // Check if any business category shares the parent
       const hasParentMatch = businessCategories.some(cat => cat.startsWith(parentCategory));
-      const zoneScore = scoreZoneMatch(contract, intent.location.zone);
+      const zoneScore = contract
+        ? scoreZoneMatch(contract, intent.location.zone)
+        : scoreZoneMatchBasic(intent.location.zone, business);
 
       if (hasParentMatch && zoneScore > 0) {
         console.log(`[DISCOVER]   ✓ Parent fallback match: "${business.display_name}"`);
         const breakdown: ScoreBreakdown = {
           category_match: 0.6, // Lower score for fallback match
           zone_match: zoneScore,
-          price_fit: scorePriceFit(contract, intent.budget),
-          capacity: scoreCapacity(contract),
+          price_fit: contract ? scorePriceFit(contract, intent.budget) : 0.5,
+          capacity: contract ? scoreCapacity(contract) : 0.7,
           trust_score: scoreTrustScore(business.trust_score),
         };
         const score = calculateCompositeScore(breakdown);
@@ -303,7 +336,39 @@ export function filterByLeadTime(
   const maxHours = urgencyHours[urgency] ?? 72;
 
   return matches.filter((match) => {
-    const contract = match.business.nomos_contract as NomosContract;
+    const contract = match.business.nomos_contract as NomosContract | null;
+    // Businesses without contracts are assumed available (no lead time constraint)
+    if (!contract) return true;
     return contract.availability.lead_time_hours <= maxHours;
   });
+}
+
+/**
+ * Category match using business.categories[] only (no NOMOS contract needed)
+ */
+function scoreCategoryMatchBasic(intentCategory: string, business: Business): number {
+  const categories = business.categories || [];
+  if (categories.length === 0) return 0;
+
+  const intentParts = intentCategory.split('.');
+  const intentParent = intentParts.slice(0, -1).join('.');
+
+  if (categories.includes(intentCategory)) return 1.0;
+
+  for (const cat of categories) {
+    if (intentParent && cat.startsWith(intentParent + '.')) return 0.8;
+    if (intentCategory.startsWith(cat + '.')) return 0.85;
+    const catParts = cat.split('.');
+    if (catParts.length >= 2 && intentParts.length >= 2 &&
+        catParts[0] === intentParts[0] && catParts[1] === intentParts[1]) return 0.75;
+  }
+  return 0;
+}
+
+/**
+ * Zone match using business.service_zones[] only (no NOMOS contract needed)
+ */
+function scoreZoneMatchBasic(intentZone: string, business: Business): number {
+  const zones = business.service_zones || [];
+  return zones.includes(intentZone) ? 1.0 : 0;
 }

@@ -16,6 +16,7 @@ export interface NotificationPayload {
   matchScore: number;
   matchRank: number;
   budgetRange?: string;
+  specifics?: Record<string, string>; // consumer-provided service details
   claimUrl: string;
   // Escalation-specific fields
   escalationTriggers?: string[];

@@ -20,53 +20,78 @@ export function formatMessage(
   const locationDisplay = payload.location.replace(/_/g, ' ');
 
   switch (template) {
-    case TEMPLATES.NEW_LEAD:
+    case TEMPLATES.NEW_LEAD: {
+      const urgencyDisplay: Record<string, string> = {
+        asap: '🚨 ASAP',
+        same_day: '⚡ Same Day',
+        next_day: '📅 Next Day',
+        this_week: '📅 This Week',
+        flexible: '🕐 Flexible',
+      };
+      const urgencyLabel = urgencyDisplay[payload.urgency] || payload.urgency;
+
+      // Build specifics string if available
+      const specificsLines = payload.specifics
+        ? Object.entries(payload.specifics)
+            .filter(([, v]) => v)
+            .map(([k, v]) => `• ${k.replace(/_/g, ' ')}: ${v}`)
+            .join('\n')
+        : '';
+
       if (channel === 'email') {
         return {
-          subject: `New ${categoryDisplay} lead in ${locationDisplay} - Match ${payload.matchScore}%`,
-          body: `
-Hi ${payload.businessName},
+          subject: `🔔 New ${categoryDisplay} lead in ${locationDisplay} — ${payload.matchScore}% match`,
+          body: `Hi ${payload.businessName},
 
-You have a new lead matching your services!
+You have a new lead that matches your services!
 
-📍 Location: ${locationDisplay}
+━━━━━━━━━━━━━━━━━━━━
+SERVICE REQUEST DETAILS
+━━━━━━━━━━━━━━━━━━━━
 🔧 Service: ${categoryDisplay}
-⚡ Urgency: ${payload.urgency}
+📍 Location: ${locationDisplay}
+${urgencyLabel}
+${payload.budgetRange ? `💰 Budget: ${payload.budgetRange}` : '💰 Budget: Not specified'}
+${specificsLines ? `\nDetails:\n${specificsLines}` : ''}
+
 📊 Match Score: ${payload.matchScore}% (Rank #${payload.matchRank})
-${payload.budgetRange ? `💰 Budget: ${payload.budgetRange}` : ''}
+━━━━━━━━━━━━━━━━━━━━
 
-Claim this lead now: ${payload.claimUrl}
+⏱ You have a limited window to accept. First to respond wins the job.
 
-First to claim gets the customer contact.
+👉 Claim this lead: ${payload.claimUrl}
 
-- Nida
-          `.trim(),
+— Nida`.trim(),
         };
       } else if (channel === 'telegram') {
-        // Telegram - use HTML formatting
         return {
-          body: `🔔 <b>New Lead!</b>
+          body: `🔔 <b>New Lead for You!</b>
 
-<b>${categoryDisplay.toUpperCase()}</b> in ${locationDisplay}
-⚡ Urgency: ${payload.urgency}
-📊 Match: ${payload.matchScore}% (Rank #${payload.matchRank})
-${payload.budgetRange ? `💰 Budget: ${payload.budgetRange}` : ''}
+🔧 <b>${categoryDisplay.toUpperCase()}</b>
+📍 ${locationDisplay}
+${urgencyLabel}
+${payload.budgetRange ? `💰 ${payload.budgetRange}` : ''}${specificsLines ? `\n\n<b>Details:</b>\n${specificsLines}` : ''}
 
-Use the buttons below to respond.`,
+📊 Match: <b>${payload.matchScore}%</b> • Rank #${payload.matchRank}
+
+⏱ <i>You have a limited window — respond now!</i>`,
         };
       } else {
-        // WhatsApp / SMS - keep it short
+        // WhatsApp / SMS
         return {
-          body: `🔔 New lead!
+          body: `🔔 New Lead — Nida
 
 ${categoryDisplay.toUpperCase()} in ${locationDisplay}
-⚡ ${payload.urgency}
-📊 ${payload.matchScore}% match (#${payload.matchRank})
-${payload.budgetRange ? `💰 ${payload.budgetRange}` : ''}
+${urgencyLabel}
+${payload.budgetRange ? `💰 ${payload.budgetRange}` : ''}${specificsLines ? `\n\nDetails:\n${specificsLines}` : ''}
 
-Claim now: ${payload.claimUrl}`,
+Match: ${payload.matchScore}% (#${payload.matchRank})
+
+⏱ Respond quickly — window is limited!
+👉 ${payload.claimUrl}`,
         };
       }
+    }
 
     case TEMPLATES.LEAD_REMINDER:
       if (channel === 'telegram') {

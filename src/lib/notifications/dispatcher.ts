@@ -73,11 +73,15 @@ export async function dispatchNotifications(
       matchScore: negotiation.match_score || 0,
       matchRank: negotiation.match_rank || 1,
       budgetRange: formatBudget(intentData.budget),
+      specifics: intentData.specifics as Record<string, string> | undefined,
       claimUrl: `${baseUrl}/dashboard/leads/${negotiation.id}`,
     };
 
-    // Determine channels to use
-    const channels = options.channels || preferences.channels;
+    // Determine channels to use - auto-prioritize Telegram when the business has it
+    let channels = options.channels || preferences.channels;
+    if (payload.telegramChatId && !channels.includes('telegram')) {
+      channels = ['telegram', ...channels];
+    }
 
     // Try each channel in order
     for (const channel of channels) {

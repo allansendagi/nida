@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { processMessage } from '@/lib/conversations/service';
 import { sendTelegramReply, telegramAdapter } from '@/lib/notifications/channels/telegram';
 import { createServiceClient } from '@/lib/supabase/server';
+import { acceptOffer, rejectOffer } from '@/lib/notifications/sequential';
+import { notifyConsumerAccepted } from '@/lib/notifications/consumer';
 
 /**
  * Telegram webhook handler
@@ -191,62 +193,43 @@ async function handleCallbackQuery(callbackQuery: TelegramCallbackQuery): Promis
     return;
   }
 
-  const supabase = createServiceClient();
-
   try {
     if (action === 'accept') {
-      // Accept the lead
-      const { error } = await supabase
-        .from('negotiations')
-        .update({
-          state: 'accepted',
-          offer_state: 'accepted',
-          claimed_at: new Date().toISOString(),
-        })
-        .eq('id', negotiationId);
+      const result = await acceptOffer(negotiationId);
 
-      if (error) {
-        console.error('Failed to accept negotiation:', error);
-        await telegramAdapter.answerCallbackQuery(callbackId, 'Failed to accept lead. Please try again.', true);
+      if (!result.success) {
+        console.error('Failed to accept offer:', result.error);
+        await telegramAdapter.answerCallbackQuery(callbackId, result.error || 'Failed to accept lead.', true);
         return;
       }
 
-      // Update the message to show accepted status
       await telegramAdapter.editMessageText(
         chatId,
         messageId,
-        '✅ <b>Lead Accepted!</b>\n\nYou\'ve claimed this lead. The customer\'s contact information has been shared with you.\n\nPlease reach out to them promptly!'
+        '✅ <b>Lead Accepted!</b>\n\nYou\'ve claimed this lead. The customer\'s contact details will be shared with you.\n\nPlease reach out to them promptly — they\'re waiting!'
       );
 
-      await telegramAdapter.answerCallbackQuery(callbackId, '✅ Lead accepted successfully!');
+      await telegramAdapter.answerCallbackQuery(callbackId, '✅ Lead accepted!');
 
-      // Notify the consumer that a provider accepted their request
-      await notifyConsumerOfAcceptance(negotiationId);
+      // Notify the consumer via their channel (Telegram or WhatsApp)
+      await notifyConsumerAccepted(negotiationId);
 
     } else if (action === 'decline') {
-      // Decline the lead
-      const { error } = await supabase
-        .from('negotiations')
-        .update({
-          state: 'declined',
-          offer_state: 'declined',
-        })
-        .eq('id', negotiationId);
+      const result = await rejectOffer(negotiationId, 'Business declined via Telegram');
 
-      if (error) {
-        console.error('Failed to decline negotiation:', error);
-        await telegramAdapter.answerCallbackQuery(callbackId, 'Failed to decline lead. Please try again.', true);
+      if (!result.success) {
+        console.error('Failed to decline offer:', result.error);
+        await telegramAdapter.answerCallbackQuery(callbackId, 'Failed to decline lead.', true);
         return;
       }
 
-      // Update the message to show declined status
       await telegramAdapter.editMessageText(
         chatId,
         messageId,
-        '❌ <b>Lead Declined</b>\n\nYou\'ve passed on this lead. It will be offered to another provider.'
+        '❌ <b>Lead Passed</b>\n\nYou\'ve passed on this lead. It\'s been offered to the next available provider.'
       );
 
-      await telegramAdapter.answerCallbackQuery(callbackId, 'Lead declined');
+      await telegramAdapter.answerCallbackQuery(callbackId, 'Lead passed to next provider');
 
     } else {
       await telegramAdapter.answerCallbackQuery(callbackId, 'Unknown action');
@@ -254,63 +237,6 @@ async function handleCallbackQuery(callbackQuery: TelegramCallbackQuery): Promis
   } catch (error) {
     console.error('Error handling callback query:', error);
     await telegramAdapter.answerCallbackQuery(callbackId, 'An error occurred. Please try again.', true);
-  }
-}
-
-/**
- * Notify consumer that a business has accepted their request
- */
-async function notifyConsumerOfAcceptance(negotiationId: string): Promise<void> {
-  const supabase = createServiceClient();
-
-  try {
-    // Get negotiation with intent, consumer, and business details
-    const { data: negotiation, error } = await supabase
-      .from('negotiations')
-      .select(`
-        *,
-        intent:intents (
-          *,
-          consumer:consumers (*)
-        ),
-        business:businesses (*)
-      `)
-      .eq('id', negotiationId)
-      .single();
-
-    if (error || !negotiation) {
-      console.error('Failed to fetch negotiation for consumer notification:', error);
-      return;
-    }
-
-    const consumer = negotiation.intent?.consumer;
-    const business = negotiation.business;
-
-    // Get telegram chat ID - try field first, then fall back to phone field format
-    const telegramChatId = consumer?.telegram_chat_id ||
-      (consumer?.phone?.startsWith('tg:') ? consumer.phone.slice(3) : null);
-
-    if (!telegramChatId) {
-      console.log('Consumer does not have a Telegram chat ID, skipping notification');
-      return;
-    }
-
-    // Build notification message
-    const businessPhone = business?.phone || 'Contact through the platform';
-    const businessName = business?.display_name || 'A service provider';
-
-    const message =
-      `🎉 <b>Great news!</b>\n\n` +
-      `A service provider has accepted your request!\n\n` +
-      `<b>${businessName}</b> will contact you shortly.\n\n` +
-      `📞 Their phone: ${businessPhone}\n\n` +
-      `Feel free to reach out to them directly if you don't hear back soon.`;
-
-    await sendTelegramReply(telegramChatId, message);
-
-    console.log(`Consumer ${consumer.id} notified of acceptance via Telegram (chat ID: ${telegramChatId})`);
-  } catch (error) {
-    console.error('Error notifying consumer of acceptance:', error);
   }
 }
 
