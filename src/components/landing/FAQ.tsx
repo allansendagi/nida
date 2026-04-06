@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 const faqs = [
   {
     question: 'How does AI understand my request?',
-    answer: 'When you describe what you need in plain language, our AI analyzes your request to extract key details like service type, location, urgency, and specific requirements. It then matches these against our database of provider capabilities to find the best fits. The more detail you provide, the better the match.',
+    answer: 'Nida has a brief back-and-forth conversation with you — usually 2 to 3 messages — to understand what you need, where you are, how urgent it is, and any specifics. Once it has enough, it structures your intent into a machine-readable format and runs it through the NOMOS matching engine: scoring every provider against your request across category fit, service zone, availability, pricing, and capacity. The top match is dispatched first. If they decline or don\'t respond within 15 minutes, the next best provider is notified — and so on. It\'s not a simple database lookup; it\'s a ranked, time-sensitive dispatch process designed to get you the right provider fast.',
     audience: 'consumer',
   },
   {
@@ -94,10 +94,14 @@ export function FAQ() {
         <div className="mx-auto max-w-3xl">
           {/* Section header */}
           <div className="text-center mb-12">
+            <div className="mb-4 flex items-baseline gap-2 justify-center">
+              <span className="text-xl font-light text-muted-foreground/40" dir="rtl" lang="ar">نداء</span>
+              <span className="text-xs font-bold tracking-[0.3em] uppercase text-muted-foreground/30">NIDA</span>
+            </div>
             <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-              Frequently Asked Questions
+              You call. The right one answers.
             </h2>
-            <p className="mt-4 text-lg text-muted-foreground">
+            <p className="mt-4 text-muted-foreground">
               Everything you need to know about using Nida.
             </p>
           </div>
