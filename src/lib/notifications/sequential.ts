@@ -1,6 +1,7 @@
 import { createServiceClient } from '@/lib/supabase/server';
 import { dispatchNotifications } from './dispatcher';
 import { sendEscalationNotification, sendAutoAcceptedNotification } from './escalation';
+import { notifyConsumerEscalating, notifyConsumerNoProviders } from './consumer';
 import { evaluateAutoAccept, calculateIntentPrice } from '@/lib/nomos/auto-accept';
 import { evaluateEscalation } from '@/lib/nomos/escalation';
 import type { Business, Intent, Negotiation } from '@/types/database';
@@ -395,6 +396,14 @@ export async function escalateToNextProvider(
       .eq('id', intentId);
 
     console.log(`All providers exhausted for intent ${intentId}, marked as no_providers`);
+
+    // Notify consumer that all providers are unavailable
+    if (intent.consumer_id) {
+      notifyConsumerNoProviders(intent.consumer_id, intentId).catch(err =>
+        console.error('Failed to notify consumer of exhaustion:', err)
+      );
+    }
+
     return { success: false, error: 'All providers have been exhausted' };
   }
 
@@ -457,6 +466,13 @@ export async function escalateToNextProvider(
   }]);
 
   console.log(`Escalated to rank #${nextRank} (${nextNegotiation.business.display_name}) for intent ${intentId}, expires at ${expiresAt.toISOString()}`);
+
+  // Notify consumer that we're still searching (previous provider unavailable)
+  if (intent.consumer_id) {
+    notifyConsumerEscalating(intent.consumer_id).catch(err =>
+      console.error('Failed to notify consumer of escalation:', err)
+    );
+  }
 
   return {
     success: result.sent > 0,

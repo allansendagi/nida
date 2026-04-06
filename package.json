@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "seed": "npx tsx scripts/seed-businesses.ts",
+    "seed:clear": "npx tsx scripts/seed-businesses.ts --clear",
+    "seed:categories": "npx tsx scripts/seed-categories.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.80.0",

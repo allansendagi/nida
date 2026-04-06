@@ -75,6 +75,40 @@ export async function notifyConsumerAccepted(negotiationId: string): Promise<voi
 }
 
 /**
+ * Notify a consumer that their request is being escalated to the next provider
+ * (previous provider was unavailable or didn't respond in time).
+ */
+export async function notifyConsumerEscalating(consumerId: string): Promise<void> {
+  const supabase = createServiceClient();
+
+  try {
+    const { data: consumer } = await supabase
+      .from('consumers')
+      .select('*')
+      .eq('id', consumerId)
+      .single();
+
+    if (!consumer) return;
+
+    const message =
+      `🔄 Still working on it — the first provider wasn't available, ` +
+      `so we're reaching out to the next one on your list.\n\n` +
+      `Hang tight, you'll be notified as soon as someone confirms.`;
+
+    const telegramChatId = consumer.telegram_chat_id ||
+      (consumer.phone?.startsWith('tg:') ? consumer.phone.slice(3) : null);
+
+    if (telegramChatId) {
+      await sendTelegramReply(telegramChatId, message);
+    } else if (consumer.phone && !consumer.phone.startsWith('tg:')) {
+      await sendWhatsAppReply(consumer.phone, message);
+    }
+  } catch (error) {
+    console.error('notifyConsumerEscalating error:', error);
+  }
+}
+
+/**
  * Notify a consumer that no providers were found for their request,
  * with a promise to alert them when one becomes available.
  */

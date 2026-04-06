@@ -9,7 +9,9 @@
       "Bash(npm run build:*)",
       "Bash(find:*)",
       "Bash(timeout 30 ./node_modules/.bin/tsc --noEmit)",
-      "Bash(echo \"exit code $?\")"
+      "Bash(echo \"exit code $?\")",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\({k:v for k,v in d.get\\('scripts',{}\\).items\\(\\)}, indent=2\\)\\)\")",
+      "Bash(grep -n \"service_categories\" /Users/allansendagi/Desktop/nida/supabase/migrations/*.sql)"
     ]
   }
 }

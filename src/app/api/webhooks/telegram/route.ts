@@ -73,6 +73,28 @@ async function handleMessage(message: TelegramMessage): Promise<void> {
     return;
   }
 
+  // Handle "no thanks" response to optional phone sharing
+  if (text === '💬 No thanks, use Telegram only') {
+    await sendTelegramReply(
+      chatId,
+      "No problem! You'll receive all updates right here in Telegram. 👍"
+    );
+    // Remove the keyboard
+    const botToken = process.env.TELEGRAM_BOT_TOKEN;
+    if (botToken) {
+      await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text: "We'll notify you here as soon as a provider responds.",
+          reply_markup: { remove_keyboard: true },
+        }),
+      });
+    }
+    return;
+  }
+
   // Handle /help command
   if (text === '/help') {
     await sendTelegramReply(
@@ -112,46 +134,42 @@ async function handleMessage(message: TelegramMessage): Promise<void> {
       console.error(`Failed to send reply to Telegram ${chatId}:`, sendResult.error);
     }
 
-    // After intent is created, ask for phone number
+    // After intent is created, offer optional phone sharing
     if (result.intentCreated) {
       console.log(`Intent ${result.intentId} created from Telegram conversation with ${chatId}`);
 
-      // Check if we already have a real phone number for this consumer
       const supabase = createServiceClient();
 
-      // First try by telegram_chat_id (new format)
-      let consumer = null;
+      // Check if consumer already has a real phone number
+      let hasPhone = false;
       const { data: consumerByTelegram } = await supabase
         .from('consumers')
         .select('phone, telegram_chat_id')
         .eq('telegram_chat_id', chatId)
         .single();
 
-      if (consumerByTelegram) {
-        consumer = consumerByTelegram;
-      } else {
-        // Fall back to phone field (legacy format: tg:chatId)
-        const { data: consumerByPhone } = await supabase
+      if (consumerByTelegram?.phone && !consumerByTelegram.phone.startsWith('tg:')) {
+        hasPhone = true;
+      } else if (!consumerByTelegram) {
+        // Migrate legacy tg: phone record
+        const { data: legacyConsumer } = await supabase
           .from('consumers')
           .select('phone, telegram_chat_id')
           .eq('phone', `tg:${chatId}`)
           .single();
 
-        if (consumerByPhone) {
-          consumer = consumerByPhone;
-
-          // Migrate: set telegram_chat_id for future lookups
+        if (legacyConsumer) {
           await supabase
             .from('consumers')
             .update({ telegram_chat_id: chatId })
             .eq('phone', `tg:${chatId}`);
+          hasPhone = legacyConsumer.phone ? !legacyConsumer.phone.startsWith('tg:') : false;
         }
       }
 
-      // If phone starts with 'tg:' or is missing, they haven't provided a real phone yet
-      if (consumer && (!consumer.phone || consumer.phone.startsWith('tg:'))) {
-        // Ask for phone number with contact sharing button
-        await sendPhoneNumberRequest(chatId);
+      // Only ask if they haven't shared a number yet
+      if (!hasPhone) {
+        await sendOptionalPhoneRequest(chatId);
       }
     }
   } catch (error) {
@@ -241,9 +259,11 @@ async function handleCallbackQuery(callbackQuery: TelegramCallbackQuery): Promis
 }
 
 /**
- * Send a request for phone number with contact sharing button
+ * Offer optional phone number sharing after intent is created.
+ * The provider can be notified via Telegram even without a phone number,
+ * but sharing a number lets them call directly.
  */
-async function sendPhoneNumberRequest(chatId: string): Promise<void> {
+async function sendOptionalPhoneRequest(chatId: string): Promise<void> {
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
   if (!botToken) return;
 
@@ -255,11 +275,12 @@ async function sendPhoneNumberRequest(chatId: string): Promise<void> {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           chat_id: chatId,
-          text: "📞 <b>One more thing!</b>\n\nTo help the service provider contact you, please share your phone number.\n\nTap the button below to share it securely from your Telegram profile, or type it manually.",
+          text: "📞 <b>One quick thing</b> — want the provider to be able to call you directly?\n\nSharing your number means they can reach you by phone. You'll get updates here either way.",
           parse_mode: 'HTML',
           reply_markup: {
             keyboard: [
-              [{ text: '📱 Share my phone number', request_contact: true }],
+              [{ text: '📱 Share my number', request_contact: true }],
+              [{ text: '💬 No thanks, use Telegram only' }],
             ],
             resize_keyboard: true,
             one_time_keyboard: true,
@@ -268,7 +289,7 @@ async function sendPhoneNumberRequest(chatId: string): Promise<void> {
       }
     );
   } catch (error) {
-    console.error('Error sending phone number request:', error);
+    console.error('Error sending optional phone request:', error);
   }
 }
 

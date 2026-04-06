@@ -3,6 +3,9 @@
 export interface AIIntakeResult {
   complete: boolean;
   intent_data: Partial<IntentDataForIntake>;
+  /** Natural language message to send to the consumer (replaces separate clarifyingResponse call) */
+  response?: string;
+  /** @deprecated Use response instead */
   clarifying_question?: string;
   confidence: number;
 }

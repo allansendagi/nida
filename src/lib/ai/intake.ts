@@ -64,8 +64,8 @@ export async function processIntake(
   const conversationHistory = formatConversationForIntake(messages);
 
   const response = await client.messages.create({
-    model: 'claude-sonnet-4-20250514',
-    max_tokens: 1024,
+    model: 'claude-haiku-4-5-20251001', // Fast model — intake is structured extraction, not reasoning
+    max_tokens: 512,
     system: systemPrompt,
     messages: [
       {

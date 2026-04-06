@@ -1,5 +1,5 @@
 import { createServiceClient } from '@/lib/supabase/server';
-import { processIntake, generateClarifyingResponse } from '@/lib/ai/intake';
+import { processIntake } from '@/lib/ai/intake';
 import { matchBusinessesToIntent, filterByLeadTime } from '@/lib/nomos/discover';
 import { createDiscoverMessage } from '@/lib/nomos/protocol';
 import { startSequentialDispatch } from '@/lib/notifications';
@@ -225,11 +225,15 @@ export async function processMessage(
 
     // Check if AI has enough info to create intent
     if (intakeResult.complete && intakeResult.intent_data) {
+      // Send the AI's "searching now" confirmation immediately before the async matching
+      const searchingMessage = intakeResult.response || "On it! Searching for the best providers for you...";
+
       // Create the intent and start matching
       const { intent, response } = await completeConversation(
         conversation.id,
         updatedConv.consumer_id,
-        intakeResult.intent_data as IntentDataForIntake
+        intakeResult.intent_data as IntentDataForIntake,
+        searchingMessage
       );
 
       // Add assistant response to conversation
@@ -243,18 +247,12 @@ export async function processMessage(
       };
     }
 
-    // AI needs more info - generate clarifying response
-    let clarifyingResponse: string;
-
-    if (intakeResult.clarifying_question) {
-      clarifyingResponse = await generateClarifyingResponse(
-        aiMessages,
-        intakeResult.clarifying_question
-      );
-    } else {
-      // Fallback generic question
-      clarifyingResponse = "I'd be happy to help you find a service provider. Could you tell me a bit more about what you need?";
-    }
+    // AI needs more info — use the response from the single API call directly
+    // (no second Claude call needed — response is already natural language)
+    const clarifyingResponse =
+      intakeResult.response ||
+      intakeResult.clarifying_question ||
+      "I'd be happy to help you find a service provider. Could you tell me a bit more about what you need?";
 
     // Update conversation state
     await supabase
@@ -293,7 +291,8 @@ export async function processMessage(
 async function completeConversation(
   conversationId: string,
   consumerId: string,
-  intentData: IntentDataForIntake
+  intentData: IntentDataForIntake,
+  searchingMessage?: string
 ): Promise<{ intent: Intent; response: string }> {
   const supabase = createServiceClient();
 
@@ -335,13 +334,18 @@ async function completeConversation(
 
   // Run business matching (DISCOVER phase)
   // Include all non-rejected businesses so existing providers are matched
-  const { data: businesses } = await supabase
+  const { data: businesses, error: bizError } = await supabase
     .from('businesses')
     .select('*')
     .neq('approval_status', 'rejected');
 
+  console.log(`[MATCH] Intent: category="${fullIntentData.category}" zone="${fullIntentData.location?.zone}" urgency="${fullIntentData.urgency}"`);
+  console.log(`[MATCH] Businesses in DB: ${businesses?.length ?? 0}${bizError ? ` (error: ${bizError.message})` : ''}`);
+
   let matches = matchBusinessesToIntent(businesses || [], fullIntentData, 5);
+  console.log(`[MATCH] Matches before lead-time filter: ${matches.length}`);
   matches = filterByLeadTime(matches, fullIntentData.urgency);
+  console.log(`[MATCH] Matches after lead-time filter: ${matches.length}`);
 
   // Create negotiation records for matches
   const negotiations = [];
@@ -384,9 +388,10 @@ async function completeConversation(
   if (negotiations.length > 0) {
     const dispatchResult = await startSequentialDispatch(intent.id);
     console.log(`Sequential dispatch started: offered to ${dispatchResult.offeredTo || 'none'}`);
-    dispatchMessage = `We've found ${matches.length} service providers that match your needs. They're being notified now and will respond shortly.`;
+    const providerWord = matches.length === 1 ? 'provider' : 'providers';
+    dispatchMessage = `✅ Found ${matches.length} matching ${providerWord}!\n\nI've notified the top match and they have 15 minutes to accept. You'll hear from us the moment they confirm.\n\nSit tight — this usually takes just a few minutes.`;
   } else {
-    dispatchMessage = "I've recorded your request, but we couldn't find matching service providers in your area right now. We'll notify you when someone becomes available.";
+    dispatchMessage = "😔 We searched but couldn't find a matching provider in your area right now.\n\nWe've saved your request and will notify you the moment someone becomes available. You don't need to do anything — just sit tight!";
   }
 
   return {
