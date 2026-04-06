@@ -21,7 +21,7 @@ export function Hero() {
 
             {/* Location line — clean, typographic */}
             <p className="mb-5 text-xs font-semibold tracking-[0.2em] uppercase text-white/30">
-              Qatar &nbsp;·&nbsp; 2024
+              Now live in Qatar &nbsp;·&nbsp; 2026
             </p>
 
             {/* Headline */}

@@ -93,15 +93,25 @@ export function FAQ() {
       <div className="container mx-auto px-4">
         <div className="mx-auto max-w-3xl">
           {/* Section header */}
-          <div className="text-center mb-12">
-            <div className="mb-4 flex items-baseline gap-2 justify-center">
-              <span className="text-xl font-light text-muted-foreground/40" dir="rtl" lang="ar">نداء</span>
-              <span className="text-xs font-bold tracking-[0.3em] uppercase text-muted-foreground/30">NIDA</span>
-            </div>
-            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-              You call. The right one answers.
+          <div className="text-center mb-16">
+            {/* Arabic script — large, prominent */}
+            <p
+              className="text-5xl font-light text-foreground/15 mb-1 leading-none"
+              dir="rtl"
+              lang="ar"
+            >
+              نداء
+            </p>
+            {/* NIDA wordmark */}
+            <p className="text-xs font-black tracking-[0.45em] uppercase text-foreground/25 mb-6">
+              NIDA
+            </p>
+            {/* Tagline — the real headline */}
+            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
+              You call.{' '}
+              <span className="text-muted-foreground font-normal">The right one answers.</span>
             </h2>
-            <p className="mt-4 text-muted-foreground">
+            <p className="mt-5 text-muted-foreground">
               Everything you need to know about using Nida.
             </p>
           </div>

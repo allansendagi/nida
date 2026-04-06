@@ -28,8 +28,17 @@ export function Navbar() {
     <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
-          <Link href="/" className="text-2xl font-bold">
-            Nida
+          <Link href="/" className="flex items-baseline gap-2 group">
+            <span
+              className="text-2xl font-light leading-none text-foreground group-hover:text-foreground/80 transition-colors"
+              dir="rtl"
+              lang="ar"
+            >
+              نداء
+            </span>
+            <span className="text-[10px] font-bold tracking-[0.3em] uppercase text-muted-foreground/50 group-hover:text-muted-foreground/70 transition-colors">
+              NIDA
+            </span>
           </Link>
 
           {/* Desktop Navigation */}
