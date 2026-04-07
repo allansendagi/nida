@@ -248,6 +248,29 @@ export async function processMessage(
 
     const messages = (updatedConv.messages as ConversationMessage[]) || [];
 
+    // If consumer already has an active request, don't run AI intake —
+    // return a real status response instead of letting the AI hallucinate actions
+    const { data: activeIntent } = await supabase
+      .from('intents')
+      .select('id, status, intent_data')
+      .eq('consumer_id', updatedConv.consumer_id)
+      .in('status', ['structured', 'matching', 'executing'])
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (activeIntent) {
+      const category = (activeIntent.intent_data?.category as string)?.split('.').pop()?.replace(/_/g, ' ') || 'your request';
+      const statusReplies: Record<string, string> = {
+        matching: `We're still searching for a provider for your ${category} request — sit tight!\n\nYou'll be notified the moment someone confirms. Type *cancel* if you'd like to cancel and start fresh.`,
+        executing: `A provider has accepted your ${category} request and should be in touch with you shortly.\n\nIf you haven't heard from them, please contact them directly using the number we sent you. Type *cancel* if you need to cancel.`,
+        structured: `Your ${category} request is being processed. We'll notify you as soon as a provider is found.\n\nType *cancel* to cancel and start a new request.`,
+      };
+      const response = statusReplies[activeIntent.status] || `You have an active request. Type *cancel* to cancel it.`;
+      await addMessageToConversation(conversation.id, 'assistant', response);
+      return { response, intentCreated: false, conversationId: conversation.id };
+    }
+
     // Process through AI intake
     const aiMessages = messages.map((m) => ({
       role: m.role,
@@ -258,27 +281,6 @@ export async function processMessage(
 
     // Check if AI has enough info to create intent
     if (intakeResult.complete && intakeResult.intent_data) {
-      // Guard: don't create a new intent if the consumer already has one active
-      const { data: existingActive } = await supabase
-        .from('intents')
-        .select('id, status')
-        .eq('consumer_id', updatedConv.consumer_id)
-        .in('status', ['structured', 'matching', 'executing'])
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (existingActive) {
-        const statusMsg: Record<string, string> = {
-          matching: "We're still searching for a provider for your current request — sit tight! Type *cancel* if you'd like to cancel it and start fresh.",
-          executing: "A provider has already accepted your request and will be in touch shortly! Type *cancel* if you need to cancel.",
-          structured: "We're processing your current request. Type *cancel* if you'd like to start a new one.",
-        };
-        const response = statusMsg[existingActive.status] || "You already have an active request. Type *cancel* to cancel it and submit a new one.";
-        await addMessageToConversation(conversation.id, 'assistant', response);
-        return { response, intentCreated: false, conversationId: conversation.id };
-      }
-
       // Create the intent and start matching
       const { intent, response } = await completeConversation(
         conversation.id,
