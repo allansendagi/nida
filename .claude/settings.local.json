@@ -19,7 +19,9 @@
       "Bash(git push:*)",
       "Bash(npx next:*)",
       "Bash(npx vercel:*)",
-      "Bash(node_modules/.bin/tsc --noEmit)"
+      "Bash(node_modules/.bin/tsc --noEmit)",
+      "Bash(ls -la /Users/allansendagi/Desktop/nida/src/lib/redis*)",
+      "Bash(grep -n \"RatingSummary\\\\|consumer_rating\\\\|rating_status\\\\|rating_requested\" /Users/allansendagi/Desktop/nida/src/types/*.ts)"
     ]
   }
 }

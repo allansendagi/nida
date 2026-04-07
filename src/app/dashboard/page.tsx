@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { LeadFeed } from '@/components/dashboard/lead-feed';
+import { StatsPanel } from '@/components/dashboard/stats-panel';
 import Link from 'next/link';
 
 export default async function DashboardPage() {
@@ -125,20 +126,50 @@ export default async function DashboardPage() {
   }
 
   // State 4: Business exists, approved - show normal dashboard with leads
-  // Get leads for this business
   const { data: leads } = await supabase
     .from('lead_view')
     .select('*')
     .eq('business_id', business.id)
     .order('created_at', { ascending: false });
 
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+  const hasTelegram = !!business.telegram_chat_id;
+
   return (
     <div className="max-w-4xl">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Leads</h1>
-        <span className="text-sm text-gray-500">
-          {leads?.length || 0} available
-        </span>
+      {/* Header */}
+      <div className="flex items-start justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold">{greeting}, {business.display_name.split(' ')[0]}</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}
+          </p>
+        </div>
+        {!hasTelegram && (
+          <Link
+            href="/dashboard/profile"
+            className="flex items-center gap-1.5 text-xs bg-amber-50 border border-amber-200 text-amber-700 rounded-lg px-3 py-1.5 hover:bg-amber-100 transition-colors"
+          >
+            <span>⚠️</span>
+            Connect Telegram to receive leads
+          </Link>
+        )}
+        {hasTelegram && (
+          <span className="flex items-center gap-1.5 text-xs bg-green-50 border border-green-200 text-green-700 rounded-lg px-3 py-1.5">
+            <span>📱</span>
+            Telegram connected
+          </span>
+        )}
+      </div>
+
+      {/* Stats */}
+      <StatsPanel businessId={business.id} />
+
+      {/* Leads */}
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-semibold">Leads</h2>
+        <span className="text-sm text-muted-foreground">{leads?.length || 0} total</span>
       </div>
       <LeadFeed
         initialLeads={leads || []}

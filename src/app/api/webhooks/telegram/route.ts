@@ -147,6 +147,16 @@ async function handleMessage(message: TelegramMessage): Promise<void> {
     }
   }
 
+  // Detect status queries — intercept before sending to AI
+  const statusPhrases = ['status', 'update', 'any news', 'what happened', 'my request',
+    'did anyone', 'found someone', 'still waiting', 'cancel my'];
+  const isStatusQuery = statusPhrases.some(p => text.toLowerCase().includes(p));
+
+  if (isStatusQuery) {
+    await handleStatusQuery(chatId);
+    return;
+  }
+
   // Handle /help command
   if (text === '/help') {
     await sendTelegramReply(
@@ -275,9 +285,38 @@ async function handleCallbackQuery(callbackQuery: TelegramCallbackQuery): Promis
 
   console.log(`Telegram callback from ${chatId}: ${data}`);
 
-  // Parse callback data (format: "action:negotiationId")
-  const [action, negotiationId] = data.split(':');
+  // Parse callback data — supports formats:
+  //   "accept:{negotiationId}"
+  //   "decline:{negotiationId}"
+  //   "cancel:{intentId}"
+  //   "rate:{score}:{executionId}"
+  const parts = data.split(':');
+  const action = parts[0];
 
+  // Handle rating callbacks: rate:score:executionId
+  if (action === 'rate') {
+    const score = parseInt(parts[1]);
+    const executionId = parts.slice(2).join(':'); // UUID may contain colons in theory
+    if (!score || score < 1 || score > 5 || !UUID_REGEX.test(executionId)) {
+      await telegramAdapter.answerCallbackQuery(callbackId, 'Invalid rating', true);
+      return;
+    }
+    await handleRatingCallback(callbackId, chatId, messageId, executionId, score);
+    return;
+  }
+
+  // Handle cancel intent callback: cancel:intentId
+  if (action === 'cancel') {
+    const intentId = parts[1];
+    if (!intentId || !UUID_REGEX.test(intentId)) {
+      await telegramAdapter.answerCallbackQuery(callbackId, 'Invalid request', true);
+      return;
+    }
+    await handleCancelCallback(callbackId, chatId, messageId, intentId);
+    return;
+  }
+
+  const negotiationId = parts[1];
   if (!negotiationId || !UUID_REGEX.test(negotiationId) || !['accept', 'decline'].includes(action)) {
     await telegramAdapter.answerCallbackQuery(callbackId, 'Invalid request', true);
     return;
@@ -598,6 +637,211 @@ async function handleContactSharing(chatId: string, contact: TelegramContact): P
       }
     );
   }
+}
+
+/**
+ * Reply with the status of the consumer's most recent request.
+ */
+async function handleStatusQuery(chatId: string): Promise<void> {
+  const supabase = createServiceClient();
+
+  // Find consumer by telegram_chat_id or legacy tg: phone
+  const { data: consumer } = await supabase
+    .from('consumers')
+    .select('id')
+    .eq('telegram_chat_id', chatId)
+    .maybeSingle();
+
+  const consumerId = consumer?.id ?? null;
+
+  if (!consumerId) {
+    await sendTelegramReply(chatId, "You don't have any active requests. Tell me what you need help with!");
+    return;
+  }
+
+  // Get most recent intent in the last 24h
+  const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const { data: intent } = await supabase
+    .from('intents')
+    .select('id, status, intent_data, created_at, negotiations(id, offer_state, offer_expires_at, businesses(display_name))')
+    .eq('consumer_id', consumerId)
+    .gte('created_at', cutoff)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!intent) {
+    await sendTelegramReply(chatId, "You don't have any active requests. Tell me what you need help with!");
+    return;
+  }
+
+  const category = (intent.intent_data?.category as string)?.split('.').pop()?.replace(/_/g, ' ') || 'your request';
+  type NegotiationRow = { id: string; offer_state: string; offer_expires_at: string | null; businesses: { display_name: string }[] | null };
+  const negotiations = intent.negotiations as unknown as NegotiationRow[] | null;
+
+  // Find active accepted negotiation
+  const acceptedNeg = negotiations?.find(n => n.offer_state === 'accepted');
+  const offeredNeg = negotiations?.find(n => n.offer_state === 'offered');
+
+  const botToken = process.env.TELEGRAM_BOT_TOKEN;
+
+  let text: string;
+  let replyMarkup: object | null = null;
+
+  if (intent.status === 'executing' || intent.status === 'settled') {
+    const businessName = (acceptedNeg?.businesses as { display_name: string }[] | null)?.[0]?.display_name || 'A provider';
+    text = `✅ <b>${businessName} accepted your ${category} request!</b>\n\nThey should be in touch with you shortly.`;
+  } else if (intent.status === 'no_providers') {
+    text = `😔 We couldn't find an available provider for your ${category} request.\n\nSend a new message to try again — sometimes availability changes!`;
+  } else if (intent.status === 'cancelled') {
+    text = `Your ${category} request was cancelled. Send a new message whenever you need help.`;
+  } else if (offeredNeg) {
+    const expiry = offeredNeg.offer_expires_at ? new Date(offeredNeg.offer_expires_at) : null;
+    const minsLeft = expiry ? Math.max(0, Math.round((expiry.getTime() - Date.now()) / 60000)) : null;
+    const timeStr = minsLeft !== null ? ` They have ${minsLeft} minute${minsLeft !== 1 ? 's' : ''} to respond.` : '';
+    text = `⏳ <b>Almost there!</b>\n\nWe've contacted a provider for your ${category} request.${timeStr}\n\nYou'll be notified as soon as they respond.`;
+    replyMarkup = {
+      inline_keyboard: [[{ text: '❌ Cancel this request', callback_data: `cancel:${intent.id}` }]],
+    };
+  } else if (intent.status === 'structured' || intent.status === 'matching') {
+    text = `🔍 <b>Searching for providers...</b>\n\nWe're matching your ${category} request with the best available providers.\n\nYou'll hear back shortly!`;
+    replyMarkup = {
+      inline_keyboard: [[{ text: '❌ Cancel this request', callback_data: `cancel:${intent.id}` }]],
+    };
+  } else {
+    text = `🔍 Your ${category} request is being processed. We'll notify you once a match is found!`;
+  }
+
+  if (botToken) {
+    await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: AbortSignal.timeout(8000),
+      body: JSON.stringify({
+        chat_id: chatId,
+        text,
+        parse_mode: 'HTML',
+        ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
+      }),
+    }).catch(err => console.error('Failed to send status reply:', err));
+  }
+}
+
+/**
+ * Handle cancel intent callback — marks the intent as cancelled.
+ */
+async function handleCancelCallback(
+  callbackId: string, chatId: string, messageId: string, intentId: string
+): Promise<void> {
+  const supabase = createServiceClient();
+
+  // Verify this intent belongs to this consumer
+  const { data: consumer } = await supabase
+    .from('consumers')
+    .select('id')
+    .eq('telegram_chat_id', chatId)
+    .maybeSingle();
+
+  if (!consumer) {
+    await telegramAdapter.answerCallbackQuery(callbackId, 'Could not verify identity', true);
+    return;
+  }
+
+  const { data: intent } = await supabase
+    .from('intents')
+    .select('id, status, consumer_id')
+    .eq('id', intentId)
+    .eq('consumer_id', consumer.id)
+    .maybeSingle();
+
+  if (!intent) {
+    await telegramAdapter.answerCallbackQuery(callbackId, 'Request not found', true);
+    return;
+  }
+
+  if (['cancelled', 'settled', 'executing'].includes(intent.status)) {
+    await telegramAdapter.answerCallbackQuery(callbackId, 'This request cannot be cancelled now');
+    return;
+  }
+
+  // Cancel intent and all pending/offered negotiations
+  await supabase.from('intents').update({ status: 'cancelled' }).eq('id', intentId);
+  await supabase
+    .from('negotiations')
+    .update({ offer_state: 'cancelled' })
+    .eq('intent_id', intentId)
+    .in('offer_state', ['pending', 'offered']);
+
+  await telegramAdapter.editMessageText(
+    chatId, messageId,
+    '❌ <b>Request cancelled.</b>\n\nYour request has been cancelled. Send a new message whenever you need help!'
+  );
+  await telegramAdapter.answerCallbackQuery(callbackId, 'Request cancelled');
+}
+
+/**
+ * Handle consumer rating callback — saves the rating and updates business summary.
+ */
+async function handleRatingCallback(
+  callbackId: string, chatId: string, messageId: string, executionId: string, score: number
+): Promise<void> {
+  const supabase = createServiceClient();
+
+  // Find execution and verify it belongs to this consumer
+  const { data: execution } = await supabase
+    .from('executions')
+    .select('id, consumer_rating, negotiation:negotiations(business_id, intent:intents(consumer:consumers(telegram_chat_id)))')
+    .eq('id', executionId)
+    .maybeSingle();
+
+  if (!execution) {
+    await telegramAdapter.answerCallbackQuery(callbackId, 'Could not find this job', true);
+    return;
+  }
+
+  const consumerTgId = (execution.negotiation as { intent?: { consumer?: { telegram_chat_id?: string } } } | null)
+    ?.intent?.consumer?.telegram_chat_id;
+
+  if (consumerTgId !== chatId) {
+    await telegramAdapter.answerCallbackQuery(callbackId, 'Unauthorized', true);
+    return;
+  }
+
+  if (execution.consumer_rating) {
+    await telegramAdapter.answerCallbackQuery(callbackId, 'You already rated this job');
+    return;
+  }
+
+  // Save rating
+  await supabase
+    .from('executions')
+    .update({ consumer_rating: score, rating_status: 'rated' })
+    .eq('id', executionId);
+
+  // Recalculate business rating summary
+  const businessId = (execution.negotiation as { business_id?: string } | null)?.business_id;
+  if (businessId) {
+    const { data: ratings } = await supabase
+      .from('executions')
+      .select('consumer_rating, negotiation:negotiations!inner(business_id)')
+      .eq('negotiation.business_id', businessId)
+      .not('consumer_rating', 'is', null);
+
+    if (ratings && ratings.length > 0) {
+      const avg = ratings.reduce((sum, r) => sum + (r.consumer_rating as number), 0) / ratings.length;
+      await supabase
+        .from('businesses')
+        .update({ rating_summary: { average: Math.round(avg * 10) / 10, count: ratings.length } })
+        .eq('id', businessId);
+    }
+  }
+
+  const stars = '⭐'.repeat(score);
+  await telegramAdapter.editMessageText(
+    chatId, messageId,
+    `${stars} <b>Thank you for your rating!</b>\n\nYour feedback helps other customers find great providers. 🙏`
+  );
+  await telegramAdapter.answerCallbackQuery(callbackId, 'Rating saved — thank you!');
 }
 
 /**

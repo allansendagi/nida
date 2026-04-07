@@ -338,12 +338,26 @@ export function filterByLeadTime(
   };
 
   const maxHours = urgencyHours[urgency] ?? 72;
+  const todayStr = new Date().toISOString().split('T')[0];
+  const isUrgent = urgency === 'asap' || urgency === 'same_day';
 
   return matches.filter((match) => {
     const contract = match.business.nomos_contract as NomosContract | null;
     // Businesses without contracts are assumed available (no lead time constraint)
     if (!contract) return true;
-    return contract.availability.lead_time_hours <= maxHours;
+
+    // Lead time filter
+    if (contract.availability.lead_time_hours > maxHours) return false;
+
+    // Blocked dates filter — exclude business if today is blocked and urgency is asap/same_day
+    if (isUrgent) {
+      const blockedDates = (match.business as Business & { blocked_dates?: string[] }).blocked_dates;
+      if (blockedDates && Array.isArray(blockedDates) && blockedDates.includes(todayStr)) {
+        return false;
+      }
+    }
+
+    return true;
   });
 }
 

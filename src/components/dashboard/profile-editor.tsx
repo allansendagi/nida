@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -61,6 +61,48 @@ export function ProfileEditor({ business }: ProfileEditorProps) {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+
+  // Blocked dates state
+  const [blockedDates, setBlockedDates] = useState<string[]>([]);
+  const [datesLoading, setDatesLoading] = useState(false);
+  const [datesSaving, setDatesSaving] = useState(false);
+
+  useEffect(() => {
+    setDatesLoading(true);
+    fetch('/api/business/blocked-dates')
+      .then(r => r.json())
+      .then(data => setBlockedDates(data.dates ?? []))
+      .catch(() => {})
+      .finally(() => setDatesLoading(false));
+  }, []);
+
+  const toggleBlockedDate = (dateStr: string) => {
+    setBlockedDates(prev =>
+      prev.includes(dateStr) ? prev.filter(d => d !== dateStr) : [...prev, dateStr]
+    );
+  };
+
+  const saveBlockedDates = async () => {
+    setDatesSaving(true);
+    try {
+      await fetch('/api/business/blocked-dates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dates: blockedDates }),
+      });
+    } catch (_) {
+      // ignore
+    } finally {
+      setDatesSaving(false);
+    }
+  };
+
+  // Generate next 30 days for the date picker
+  const next30Days = Array.from({ length: 30 }, (_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() + i);
+    return d.toISOString().split('T')[0];
+  });
 
   // Form state - Basic info
   const [displayName, setDisplayName] = useState(contract.issuer.display_name);
@@ -263,6 +305,68 @@ export function ProfileEditor({ business }: ProfileEditorProps) {
               Minimum notice required before accepting a job
             </p>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Blocked Dates */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Blocked Dates</CardTitle>
+          <CardDescription>Mark dates when you&apos;re unavailable — you won&apos;t receive leads on these days</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {datesLoading ? (
+            <div className="flex gap-1 flex-wrap">
+              {[...Array(7)].map((_, i) => (
+                <div key={i} className="h-10 w-12 bg-muted rounded animate-pulse" />
+              ))}
+            </div>
+          ) : (
+            <>
+              <div className="flex flex-wrap gap-1.5">
+                {next30Days.map(dateStr => {
+                  const d = new Date(dateStr + 'T00:00:00');
+                  const isBlocked = blockedDates.includes(dateStr);
+                  const dayLabel = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+                  const weekday = d.toLocaleDateString('en-GB', { weekday: 'short' });
+                  return (
+                    <button
+                      key={dateStr}
+                      type="button"
+                      onClick={() => toggleBlockedDate(dateStr)}
+                      className={`flex flex-col items-center px-2 py-1.5 rounded-lg border text-xs transition-colors ${
+                        isBlocked
+                          ? 'bg-red-100 border-red-300 text-red-700'
+                          : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      <span className="font-medium">{dayLabel}</span>
+                      <span className="text-gray-400">{weekday}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="flex items-center gap-3 text-xs text-gray-500">
+                <span className="flex items-center gap-1">
+                  <span className="w-3 h-3 rounded bg-red-100 border border-red-300 inline-block" />
+                  Blocked
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-3 h-3 rounded bg-white border border-gray-200 inline-block" />
+                  Available
+                </span>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={saveBlockedDates}
+                disabled={datesSaving}
+              >
+                {datesSaving ? 'Saving...' : 'Save blocked dates'}
+              </Button>
+            </>
+          )}
         </CardContent>
       </Card>
 

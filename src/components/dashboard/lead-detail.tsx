@@ -61,8 +61,10 @@ const urgencyColors: Record<string, string> = {
 export function LeadDetail({ negotiation, execution, businessId }: LeadDetailProps) {
   const [loading, setLoading] = useState(false);
   const [rejectLoading, setRejectLoading] = useState(false);
+  const [completeLoading, setCompleteLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [timeRemaining, setTimeRemaining] = useState<string | null>(null);
+  const [completed, setCompleted] = useState(execution?.status === 'completed');
   const router = useRouter();
 
   const { intent } = negotiation;
@@ -136,6 +138,34 @@ export function LeadDetail({ negotiation, execution, businessId }: LeadDetailPro
       setError(err instanceof Error ? err.message : 'Failed to reject lead');
     } finally {
       setRejectLoading(false);
+    }
+  };
+
+  const handleComplete = async () => {
+    if (!execution) return;
+    if (!confirm('Mark this job as complete? This will send a rating request to the customer.')) {
+      return;
+    }
+
+    setCompleteLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/executions/${execution.id}/complete`, {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to mark job complete');
+      }
+
+      setCompleted(true);
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to mark job complete');
+    } finally {
+      setCompleteLoading(false);
     }
   };
 
@@ -362,6 +392,28 @@ export function LeadDetail({ negotiation, execution, businessId }: LeadDetailPro
         <Alert>
           {offerStateMessages[negotiation.offer_state]}
         </Alert>
+      )}
+
+      {/* Mark Complete Button */}
+      {execution?.status === 'confirmed' && isClaimed && (
+        <div>
+          {completed ? (
+            <div className="flex items-center gap-2 text-green-700 bg-green-50 border border-green-200 rounded-lg px-4 py-3">
+              <CheckCircle className="h-5 w-5" />
+              <span className="font-medium">Job marked as complete — rating request sent to customer</span>
+            </div>
+          ) : (
+            <Button
+              onClick={handleComplete}
+              disabled={completeLoading}
+              className="w-full bg-green-600 hover:bg-green-700 text-white"
+              size="lg"
+            >
+              <CheckCircle className="h-4 w-4 mr-2" />
+              {completeLoading ? 'Marking complete...' : 'Mark Job as Complete'}
+            </Button>
+          )}
+        </div>
       )}
 
       {/* Execution Details */}
