@@ -53,6 +53,19 @@ async function handleMessage(message: TelegramMessage): Promise<void> {
   const chatId = String(message.chat.id);
   const text = message.text;
 
+  // Deduplicate: skip if we've already processed this exact message
+  // Telegram retries webhooks if the server doesn't respond in time, causing duplicates
+  const redis = getRedis();
+  if (redis && message.message_id) {
+    const dedupKey = `tg_msg:${chatId}:${message.message_id}`;
+    const seen = await redis.get(dedupKey).catch(() => null);
+    if (seen) {
+      console.log(`Skipping duplicate message ${message.message_id} from ${chatId}`);
+      return;
+    }
+    await redis.set(dedupKey, '1', { ex: 300 }).catch(() => {}); // 5 min TTL
+  }
+
   // Handle contact sharing (phone number)
   if (message.contact) {
     await handleContactSharing(chatId, message.contact);
@@ -401,27 +414,41 @@ async function saveTypedPhoneNumber(chatId: string, rawNumber: string): Promise<
 
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
 
-  // Try to update consumer by telegram_chat_id first
-  let { data: updated, error } = await supabase
-    .from('consumers')
-    .update({ phone })
-    .eq('telegram_chat_id', chatId)
-    .select()
-    .single();
+  // Find consumer by telegram_chat_id or legacy tg: phone — then update by ID
+  let consumerId: string | null = null;
 
-  // Fallback: try legacy tg: phone record
-  if (!updated) {
-    const result = await supabase
-      .from('consumers')
-      .update({ phone, telegram_chat_id: chatId })
-      .eq('phone', `tg:${chatId}`)
-      .select()
-      .single();
-    updated = result.data;
-    error = result.error;
+  const { data: byTelegramId } = await supabase
+    .from('consumers').select('id').eq('telegram_chat_id', chatId).single();
+  if (byTelegramId) {
+    consumerId = byTelegramId.id;
+  } else {
+    const { data: byLegacy } = await supabase
+      .from('consumers').select('id').eq('phone', `tg:${chatId}`).single();
+    if (byLegacy) consumerId = byLegacy.id;
   }
 
-  if (error || !updated) {
+  if (!consumerId) {
+    console.error(`No consumer found for chatId ${chatId} when saving typed phone`);
+    if (botToken) {
+      await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text: "❌ Sorry, I couldn't save that number. Please try the Share button above, or contact support.",
+          reply_markup: { remove_keyboard: true },
+        }),
+      });
+    }
+    return;
+  }
+
+  const { error } = await supabase
+    .from('consumers')
+    .update({ phone, telegram_chat_id: chatId })
+    .eq('id', consumerId);
+
+  if (error) {
     console.error('Failed to save typed phone number:', error);
     if (botToken) {
       await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
@@ -466,62 +493,60 @@ async function handleContactSharing(chatId: string, contact: TelegramContact): P
 
   console.log(`Received phone number from Telegram ${chatId}: ${phoneNumber}`);
 
-  // Check if this phone already exists in the table (UNIQUE constraint)
-  const { data: existingWithPhone } = await supabase
+  // Step 1: Find this consumer's ID (by telegram_chat_id or legacy tg: phone)
+  let consumerId: string | null = null;
+
+  const { data: byTelegramId } = await supabase
     .from('consumers')
-    .select('id, telegram_chat_id')
-    .eq('phone', phoneNumber)
+    .select('id')
+    .eq('telegram_chat_id', chatId)
     .single();
 
-  let updated = false;
-
-  if (existingWithPhone) {
-    // Phone already exists — link telegram_chat_id to that consumer (same person, different session)
-    const { error } = await supabase
-      .from('consumers')
-      .update({ telegram_chat_id: chatId })
-      .eq('id', existingWithPhone.id);
-
-    if (!error) {
-      updated = true;
-      // Clean up the duplicate tg: consumer record
-      await supabase
-        .from('consumers')
-        .delete()
-        .eq('telegram_chat_id', chatId)
-        .neq('id', existingWithPhone.id);
-    }
+  if (byTelegramId) {
+    consumerId = byTelegramId.id;
   } else {
-    // No conflict — update the consumer's phone directly
-    const { data: byTelegram } = await supabase
+    const { data: byLegacyPhone } = await supabase
       .from('consumers')
-      .update({ phone: phoneNumber })
-      .eq('telegram_chat_id', chatId)
-      .select()
+      .select('id')
+      .eq('phone', `tg:${chatId}`)
       .single();
-
-    if (byTelegram) {
-      updated = true;
-    } else {
-      // Fallback: try legacy tg: phone format
-      const { data: byPhone } = await supabase
-        .from('consumers')
-        .update({ phone: phoneNumber, telegram_chat_id: chatId })
-        .eq('phone', `tg:${chatId}`)
-        .select()
-        .single();
-      if (byPhone) updated = true;
-    }
+    if (byLegacyPhone) consumerId = byLegacyPhone.id;
   }
 
-  if (!updated) {
-    console.error(`Failed to save phone for chat ${chatId}: ${phoneNumber}`);
-    await sendTelegramReply(
-      chatId,
-      "Sorry, I couldn't save your phone number. Please try again or type it manually."
-    );
+  if (!consumerId) {
+    console.error(`No consumer found for chatId ${chatId}`);
+    await sendTelegramReply(chatId, "Sorry, I couldn't save your phone number. Please try again or type it manually.");
     return;
   }
+
+  // Step 2: Check if another consumer already owns this phone (UNIQUE constraint)
+  const { data: existingWithPhone } = await supabase
+    .from('consumers')
+    .select('id')
+    .eq('phone', phoneNumber)
+    .neq('id', consumerId)
+    .single();
+
+  if (existingWithPhone) {
+    // Merge: link telegram to the existing consumer, delete the tg: duplicate
+    await supabase.from('consumers').update({ telegram_chat_id: chatId }).eq('id', existingWithPhone.id);
+    await supabase.from('consumers').delete().eq('id', consumerId);
+    console.log(`Merged consumer ${consumerId} into ${existingWithPhone.id} for phone ${phoneNumber}`);
+  } else {
+    // Update by ID — reliable, no chaining issues
+    const { error } = await supabase
+      .from('consumers')
+      .update({ phone: phoneNumber, telegram_chat_id: chatId })
+      .eq('id', consumerId);
+
+    if (error) {
+      console.error(`Failed to save phone for chat ${chatId}:`, error);
+      await sendTelegramReply(chatId, "Sorry, I couldn't save your phone number. Please try again or type it manually.");
+      return;
+    }
+  }
+
+  console.log(`Phone ${phoneNumber} saved for consumer ${consumerId} (chat ${chatId})`);
 
   // Remove the keyboard and confirm
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
