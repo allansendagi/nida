@@ -410,10 +410,17 @@ export function ProfileEditor({ business }: ProfileEditorProps) {
                   Automatically accept leads that match your criteria
                 </p>
               </div>
-              <Switch
-                checked={autoAccept}
-                onCheckedChange={setAutoAccept}
-              />
+              <button
+                type="button"
+                onClick={() => setAutoAccept(!autoAccept)}
+                className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
+                  autoAccept ? 'bg-green-500' : 'bg-gray-200'
+                }`}
+              >
+                <span className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${
+                  autoAccept ? 'left-[1.375rem]' : 'left-1'
+                }`} />
+              </button>
             </div>
 
             {/* Auto-Accept Conditions (shown when enabled) */}
