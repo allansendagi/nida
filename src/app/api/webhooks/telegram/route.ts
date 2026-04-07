@@ -5,12 +5,21 @@ import { createServiceClient } from '@/lib/supabase/server';
 import { acceptOffer, rejectOffer } from '@/lib/notifications/sequential';
 import { notifyConsumerAccepted } from '@/lib/notifications/consumer';
 import { getRedis } from '@/lib/redis';
+import { validateEnv } from '@/lib/config/validate-env';
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
  * Telegram webhook handler
  * Receives updates for messages and callback queries (button clicks)
  */
 export async function POST(request: Request) {
+  // Fail fast if required env vars are missing
+  const envCheck = validateEnv();
+  if (!envCheck.ok) {
+    return NextResponse.json({ error: 'Server misconfigured' }, { status: 500 });
+  }
+
   try {
     // Verify the webhook secret from URL parameter
     const { searchParams } = new URL(request.url);
@@ -64,6 +73,17 @@ async function handleMessage(message: TelegramMessage): Promise<void> {
       return;
     }
     await redis.set(dedupKey, '1', { ex: 300 }).catch(() => {}); // 5 min TTL
+  }
+
+  // Rate limiting: max 10 messages per 60 seconds per chatId
+  if (redis) {
+    const rateKey = `rate:tg:${chatId}`;
+    const count = await redis.incr(rateKey).catch(() => null);
+    if (count === 1) await redis.expire(rateKey, 60).catch(() => {});
+    if (count !== null && count > 10) {
+      await sendTelegramReply(chatId, "You're sending messages too fast. Please wait a moment and try again.");
+      return;
+    }
   }
 
   // Handle contact sharing (phone number)
@@ -258,8 +278,8 @@ async function handleCallbackQuery(callbackQuery: TelegramCallbackQuery): Promis
   // Parse callback data (format: "action:negotiationId")
   const [action, negotiationId] = data.split(':');
 
-  if (!negotiationId) {
-    await telegramAdapter.answerCallbackQuery(callbackId, 'Invalid callback data');
+  if (!negotiationId || !UUID_REGEX.test(negotiationId) || !['accept', 'decline'].includes(action)) {
+    await telegramAdapter.answerCallbackQuery(callbackId, 'Invalid request', true);
     return;
   }
 
@@ -401,15 +421,24 @@ async function sendOptionalPhoneRequest(chatId: string): Promise<void> {
 async function saveTypedPhoneNumber(chatId: string, rawNumber: string): Promise<void> {
   const supabase = createServiceClient();
 
-  // Normalize: strip spaces/dashes, ensure + prefix for international
+  // Normalize: strip spaces/dashes/parens, then handle prefix variants
   let phone = rawNumber.replace(/[\s\-\(\)]/g, '');
-  if (!phone.startsWith('+')) {
-    // Qatar numbers: if 8 digits starting with 3/4/5/6/7, prefix with +974
-    if (/^[3-7]\d{7}$/.test(phone)) {
-      phone = '+974' + phone;
-    } else {
-      phone = '+' + phone;
-    }
+
+  if (phone.startsWith('00974')) {
+    // International dial prefix for Qatar: 00974 → +974
+    phone = '+974' + phone.slice(5);
+  } else if (phone.startsWith('+974') && phone.length === 12) {
+    // Already correct E.164 Qatar number
+  } else if (/^[3-7]\d{7}$/.test(phone)) {
+    // 8-digit Qatar local number
+    phone = '+974' + phone;
+  } else if (!phone.startsWith('+')) {
+    phone = '+' + phone;
+  }
+
+  // Enforce E.164 max length (15 digits + '+')
+  if (phone.length > 16) {
+    phone = phone.slice(0, 16);
   }
 
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
@@ -528,7 +557,9 @@ async function handleContactSharing(chatId: string, contact: TelegramContact): P
     .single();
 
   if (existingWithPhone) {
-    // Merge: link telegram to the existing consumer, delete the tg: duplicate
+    // Merge: re-point all intents/conversations before deleting duplicate consumer
+    await supabase.from('intents').update({ consumer_id: existingWithPhone.id }).eq('consumer_id', consumerId);
+    await supabase.from('conversations').update({ consumer_id: existingWithPhone.id }).eq('consumer_id', consumerId);
     await supabase.from('consumers').update({ telegram_chat_id: chatId }).eq('id', existingWithPhone.id);
     await supabase.from('consumers').delete().eq('id', consumerId);
     console.log(`Merged consumer ${consumerId} into ${existingWithPhone.id} for phone ${phoneNumber}`);

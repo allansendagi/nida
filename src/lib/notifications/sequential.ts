@@ -364,8 +364,16 @@ export async function rejectOffer(
  */
 export async function escalateToNextProvider(
   intentId: string,
-  config: Partial<DispatchConfig> = {}
+  config: Partial<DispatchConfig> = {},
+  depth = 0
 ): Promise<{ success: boolean; escalatedTo?: string; error?: string }> {
+  if (depth >= 10) {
+    console.error(`[intent:${intentId}] Escalation depth limit reached — marking as no_providers`);
+    const supabase = createServiceClient();
+    await supabase.from('intents').update({ status: 'no_providers', current_offer_rank: null, offer_expires_at: null }).eq('id', intentId);
+    return { success: false, error: 'Escalation depth limit exceeded' };
+  }
+
   const supabase = createServiceClient();
   const finalConfig = { ...DEFAULT_CONFIG, ...config };
 
@@ -424,13 +432,12 @@ export async function escalateToNextProvider(
 
   if (nextNegError || !nextNegotiation) {
     // No more pending negotiations at this rank, try the next one recursively
-    // Update the intent rank first
     await supabase
       .from('intents')
       .update({ current_offer_rank: nextRank })
       .eq('id', intentId);
 
-    return escalateToNextProvider(intentId, config);
+    return escalateToNextProvider(intentId, config, depth + 1);
   }
 
   const urgency = intent.intent_data?.urgency as IntentUrgency || 'this_week';
@@ -519,17 +526,26 @@ export async function processExpiredOffers(
   for (const intent of expiredIntents) {
     processed++;
 
-    // Mark the current offer as expired
-    const { error: expireError } = await supabase
+    // Conditionally expire — only if still in 'offered' state (prevents double-processing by concurrent crons)
+    const { data: expiredRows, error: expireError } = await supabase
       .from('negotiations')
       .update({ offer_state: 'expired' })
       .eq('intent_id', intent.id)
-      .eq('offer_state', 'offered');
+      .eq('offer_state', 'offered')
+      .select('id');
 
     if (expireError) {
-      console.error(`Failed to expire negotiation for intent ${intent.id}:`, expireError);
+      console.error(`[intent:${intent.id}] Failed to expire negotiation:`, expireError);
       continue;
     }
+
+    if (!expiredRows || expiredRows.length === 0) {
+      // Another cron already processed this — skip
+      console.log(`[intent:${intent.id}] Already processed by another worker, skipping`);
+      continue;
+    }
+
+    console.log(`[intent:${intent.id}] Offer expired, escalating`);
 
     // Escalate to next provider
     const result = await escalateToNextProvider(intent.id, config);

@@ -2,6 +2,19 @@ import type { ChannelAdapter, NotificationPayload, NotificationResult, Notificat
 import { formatMessage, type TemplateName } from '../templates';
 
 const TELEGRAM_API_URL = 'https://api.telegram.org';
+const TELEGRAM_TIMEOUT_MS = 8000;
+
+/**
+ * Escape user-supplied strings before embedding in Telegram HTML messages.
+ * Prevents HTML injection when parse_mode: 'HTML' is used.
+ */
+export function escapeTelegramHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
 
 export class TelegramAdapter implements ChannelAdapter {
   channel = 'telegram' as const;
@@ -75,9 +88,8 @@ export class TelegramAdapter implements ChannelAdapter {
         `${TELEGRAM_API_URL}/bot${this.botToken}/sendMessage`,
         {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
+          signal: AbortSignal.timeout(TELEGRAM_TIMEOUT_MS),
           body: JSON.stringify({
             chat_id: chatId,
             text,
@@ -126,16 +138,13 @@ export class TelegramAdapter implements ChannelAdapter {
         `${TELEGRAM_API_URL}/bot${this.botToken}/sendMessage`,
         {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
+          signal: AbortSignal.timeout(TELEGRAM_TIMEOUT_MS),
           body: JSON.stringify({
             chat_id: chatId,
             text,
             parse_mode: 'HTML',
-            reply_markup: {
-              inline_keyboard: buttons,
-            },
+            reply_markup: { inline_keyboard: buttons },
           }),
         }
       );
@@ -180,9 +189,8 @@ export class TelegramAdapter implements ChannelAdapter {
         `${TELEGRAM_API_URL}/bot${this.botToken}/answerCallbackQuery`,
         {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
+          signal: AbortSignal.timeout(TELEGRAM_TIMEOUT_MS),
           body: JSON.stringify({
             callback_query_id: callbackQueryId,
             text,
@@ -216,9 +224,8 @@ export class TelegramAdapter implements ChannelAdapter {
         `${TELEGRAM_API_URL}/bot${this.botToken}/editMessageText`,
         {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
+          signal: AbortSignal.timeout(TELEGRAM_TIMEOUT_MS),
           body: JSON.stringify({
             chat_id: chatId,
             message_id: messageId,
@@ -260,9 +267,8 @@ export async function sendTelegramReply(chatId: string, message: string): Promis
       `${TELEGRAM_API_URL}/bot${botToken}/sendMessage`,
       {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
+        signal: AbortSignal.timeout(TELEGRAM_TIMEOUT_MS),
         body: JSON.stringify({
           chat_id: chatId,
           text: message,

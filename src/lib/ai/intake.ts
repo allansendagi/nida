@@ -13,28 +13,36 @@ interface ConversationMessage {
   content: string;
 }
 
-// Fetch categories from database
+const FRIENDLY_RETRY = "I'm having a moment — could you describe what you need? For example: 'I need a plumber in West Bay urgently'";
+
+// Fetch categories from database with a 3-second timeout
 async function fetchCategories(): Promise<ServiceCategory[]> {
   try {
     const supabase = createServiceClient();
-    const { data, error } = await supabase
+
+    const fetchPromise = supabase
       .from('service_categories')
       .select('*')
       .eq('is_active', true)
       .not('parent_id', 'is', null)
       .order('display_order', { ascending: true });
 
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('category fetch timeout')), 3000)
+    );
+
+    const { data, error } = await Promise.race([fetchPromise, timeoutPromise]);
+
     if (error) {
       console.error('Error fetching categories:', error);
       return [];
     }
 
-    // Filter to leaf categories (those with specifics_to_collect)
     return (data as ServiceCategory[]).filter(
       (c) => c.specifics_to_collect && c.specifics_to_collect.length > 0
     );
   } catch (error) {
-    console.error('Error fetching categories:', error);
+    console.warn('[Intake] Category fetch failed, using static prompt:', error instanceof Error ? error.message : error);
     return [];
   }
 }
@@ -63,28 +71,42 @@ export async function processIntake(
 
   const conversationHistory = formatConversationForIntake(messages);
 
-  const response = await client.messages.create({
-    model: 'claude-haiku-4-5-20251001', // Fast model — intake is structured extraction, not reasoning
-    max_tokens: 512,
-    system: systemPrompt,
-    messages: [
-      {
-        role: 'user',
-        content: `Process this conversation and extract service intent:\n\n${conversationHistory}\n\nRespond with JSON only.`,
-      },
-    ],
-  });
+  // 12-second timeout — prevents Vercel function from hanging and causing Telegram retries
+  let response;
+  try {
+    response = await Promise.race([
+      client.messages.create({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 512,
+        system: systemPrompt,
+        messages: [
+          {
+            role: 'user',
+            content: `Process this conversation and extract service intent:\n\n${conversationHistory}\n\nRespond with JSON only.`,
+          },
+        ],
+      }),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Claude API timeout')), 12000)
+      ),
+    ]);
+  } catch (err) {
+    console.warn('[Intake] Claude API failed:', err instanceof Error ? err.message : err);
+    return { complete: false, response: FRIENDLY_RETRY, intent_data: {}, clarifying_question: null } as unknown as AIIntakeResult;
+  }
 
   // Extract text content from response
   const textContent = response.content.find((block) => block.type === 'text');
   if (!textContent || textContent.type !== 'text') {
-    throw new Error('No text response from AI');
+    console.warn('[Intake] No text content in Claude response');
+    return { complete: false, response: FRIENDLY_RETRY, intent_data: {}, clarifying_question: null } as unknown as AIIntakeResult;
   }
 
   // Parse JSON from response
   const jsonMatch = textContent.text.match(/\{[\s\S]*\}/);
   if (!jsonMatch) {
-    throw new Error('No valid JSON in AI response');
+    console.warn('[Intake] No valid JSON in Claude response. Raw:', textContent.text.slice(0, 200));
+    return { complete: false, response: FRIENDLY_RETRY, intent_data: {}, clarifying_question: null } as unknown as AIIntakeResult;
   }
 
   try {
@@ -106,7 +128,8 @@ export async function processIntake(
 
     return result;
   } catch {
-    throw new Error('Failed to parse AI response as JSON');
+    console.warn('[Intake] Failed to parse AI JSON. Raw:', jsonMatch[0].slice(0, 200));
+    return { complete: false, response: FRIENDLY_RETRY, intent_data: {}, clarifying_question: null } as unknown as AIIntakeResult;
   }
 }
 

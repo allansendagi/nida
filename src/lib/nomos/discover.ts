@@ -278,6 +278,9 @@ function scorePriceFit(
     return 0.5;
   }
 
+  // Guard: empty rules array causes Math.min/max to return Infinity/-Infinity
+  if (!rules || rules.length === 0) return 0.5;
+
   // Get the typical price range from contract
   const avgBase = rules.reduce((sum, r) => sum + r.base, 0) / rules.length;
   const minPrice = Math.min(...rules.map((r) => r.range[0]));
@@ -317,8 +320,9 @@ function scoreCapacity(contract: NomosContract): number {
 }
 
 function scoreTrustScore(trustScore: number): number {
-  // Normalize trust score (0-100) to 0-1
-  return trustScore / 100;
+  // Clamp to 0-100 before normalizing — handles missing/corrupt values
+  const clamped = Math.min(100, Math.max(0, trustScore ?? 50));
+  return clamped / 100;
 }
 
 export function filterByLeadTime(

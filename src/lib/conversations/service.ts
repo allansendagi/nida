@@ -1,4 +1,5 @@
 import { createServiceClient } from '@/lib/supabase/server';
+import { getRedis } from '@/lib/redis';
 import { processIntake } from '@/lib/ai/intake';
 import { matchBusinessesToIntent, filterByLeadTime } from '@/lib/nomos/discover';
 import { createDiscoverMessage } from '@/lib/nomos/protocol';
@@ -301,7 +302,7 @@ export async function processMessage(
     };
   } catch (error) {
     console.error('Error processing message:', error);
-    const errorMessage = "I'm sorry, I encountered an issue processing your request. Please try again.";
+    const errorMessage = "Hmm, something went wrong on my end. Could you describe what you need? For example: *'I need an AC technician in The Pearl, this weekend'*";
 
     return {
       response: errorMessage,
@@ -324,9 +325,14 @@ async function completeConversation(
   const supabase = createServiceClient();
 
   // Normalize zone: AI may return "West Bay" or "WestBay" instead of "west_bay"
-  const normalizedZone = (intentData.location.zone || '')
+  let normalizedZone = (intentData.location.zone || '')
     .toLowerCase()
     .replace(/\s+/g, '_');
+
+  if (!normalizedZone) {
+    console.warn(`[completeConversation] Zone is empty for conversation ${conversationId}, defaulting to 'qatar'`);
+    normalizedZone = 'qatar';
+  }
 
   // Build full intent data
   const fullIntentData: IntentData = {
@@ -340,6 +346,21 @@ async function completeConversation(
     specifics: intentData.specifics,
   };
 
+  // Idempotency guard: prevent duplicate intents if message is delivered twice
+  const redis = getRedis();
+  const idempotencyKey = `intent_creating:${conversationId}`;
+  if (redis) {
+    const inProgress = await redis.get(idempotencyKey).catch(() => null);
+    if (inProgress) {
+      console.warn(`[completeConversation] Duplicate intent creation blocked for conversation ${conversationId}`);
+      return {
+        intent: inProgress as unknown as Intent,
+        response: "We're already on it! Sit tight while we find you a provider.",
+      };
+    }
+    await redis.set(idempotencyKey, '1', { ex: 30 }).catch(() => {});
+  }
+
   // Create intent
   const { data: intent, error: intentError } = await supabase
     .from('intents')
@@ -351,9 +372,13 @@ async function completeConversation(
     .select()
     .single();
 
+  if (redis) await redis.del(idempotencyKey).catch(() => {});
+
   if (intentError) {
     throw new Error(`Failed to create intent: ${intentError.message}`);
   }
+
+  console.log(`[intent:${intent.id}] Created — category="${fullIntentData.category}" zone="${fullIntentData.location?.zone}" urgency="${fullIntentData.urgency}"`);
 
   // Mark conversation as complete and link intent
   await supabase
@@ -371,13 +396,12 @@ async function completeConversation(
     .select('*')
     .neq('approval_status', 'rejected');
 
-  console.log(`[MATCH] Intent: category="${fullIntentData.category}" zone="${fullIntentData.location?.zone}" urgency="${fullIntentData.urgency}"`);
-  console.log(`[MATCH] Businesses in DB: ${businesses?.length ?? 0}${bizError ? ` (error: ${bizError.message})` : ''}`);
+  console.log(`[intent:${intent.id}] Matching — businesses in DB: ${businesses?.length ?? 0}${bizError ? ` (error: ${bizError.message})` : ''}`);
 
   let matches = matchBusinessesToIntent(businesses || [], fullIntentData, 5);
-  console.log(`[MATCH] Matches before lead-time filter: ${matches.length}`);
+  console.log(`[intent:${intent.id}] Matches before lead-time filter: ${matches.length}`);
   matches = filterByLeadTime(matches, fullIntentData.urgency);
-  console.log(`[MATCH] Matches after lead-time filter: ${matches.length}`);
+  console.log(`[intent:${intent.id}] Matches after lead-time filter: ${matches.length}`);
 
   // Create negotiation records for matches
   const negotiations = [];
@@ -419,7 +443,7 @@ async function completeConversation(
   let dispatchMessage = '';
   if (negotiations.length > 0) {
     const dispatchResult = await startSequentialDispatch(intent.id);
-    console.log(`Sequential dispatch started: offered to ${dispatchResult.offeredTo || 'none'}`);
+    console.log(`[intent:${intent.id}] Dispatch started — offered to: ${dispatchResult.offeredTo || 'none'}`);
     const providerWord = matches.length === 1 ? 'provider' : 'providers';
     dispatchMessage = `✅ Found ${matches.length} matching ${providerWord}!\n\nI've notified the top match and they have 15 minutes to accept. You'll hear from us the moment they confirm.\n\nSit tight — this usually takes just a few minutes.`;
   } else {
