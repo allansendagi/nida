@@ -1,7 +1,7 @@
 import { createServiceClient } from '@/lib/supabase/server';
 import { dispatchNotifications } from './dispatcher';
 import { sendEscalationNotification, sendAutoAcceptedNotification } from './escalation';
-import { notifyConsumerEscalating, notifyConsumerNoProviders, notifyAdminNoProviders } from './consumer';
+import { notifyConsumerAccepted, notifyConsumerEscalating, notifyConsumerNoProviders, notifyAdminNoProviders } from './consumer';
 import { evaluateAutoAccept, calculateIntentPrice } from '@/lib/nomos/auto-accept';
 import { evaluateEscalation } from '@/lib/nomos/escalation';
 import type { Business, Intent, Negotiation } from '@/types/database';
@@ -172,6 +172,31 @@ export async function startSequentialDispatch(
           .from('negotiations')
           .update({ auto_accepted: true })
           .eq('id', topNegotiation.id);
+
+        // Create execution record
+        const { generateExecutionId } = await import('@/lib/utils');
+        const consumer = intent.consumer as { name?: string; phone?: string; telegram_chat_id?: string } | null;
+        const { error: execErr } = await supabase.from('executions').insert({
+          execution_id: generateExecutionId(),
+          negotiation_id: topNegotiation.id,
+          agreed_terms: { price: 0, currency: 'QAR', date: new Date().toISOString(), warranty_days: 0, payment_method: 'tbd', cancellation: { free_until: new Date().toISOString(), fee: 0 } },
+          status: 'confirmed',
+          consumer_contact: {
+            name: consumer?.name || 'Customer',
+            ...(consumer?.phone && !consumer.phone.startsWith('tg:') ? { phone: consumer.phone } : {}),
+            ...(consumer?.telegram_chat_id ? { telegram_chat_id: consumer.telegram_chat_id, contact_method: 'telegram' } : {}),
+          },
+        });
+        if (execErr) console.error('[auto-accept] Failed to create execution:', execErr.message);
+
+        // Update intent to executing
+        const { error: intentErr } = await supabase.from('intents').update({ status: 'executing' }).eq('id', intentId);
+        if (intentErr) console.error('[auto-accept] Failed to update intent status:', intentErr.message);
+
+        // Notify consumer that a provider accepted
+        await notifyConsumerAccepted(topNegotiation.id).catch(err =>
+          console.error('[auto-accept] Failed to notify consumer:', err)
+        );
 
         return {
           success: true,
@@ -482,7 +507,10 @@ export async function escalateToNextProvider(
 
   // Notify consumer that we're still searching (previous provider unavailable)
   if (intent.consumer_id) {
-    notifyConsumerEscalating(intent.consumer_id).catch(err =>
+    const { count: totalNegotiations } = await supabase
+      .from('negotiations').select('id', { count: 'exact', head: true })
+      .eq('intent_id', intentId);
+    notifyConsumerEscalating(intent.consumer_id, nextRank, totalNegotiations ?? undefined).catch(err =>
       console.error('Failed to notify consumer of escalation:', err)
     );
   }

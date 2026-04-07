@@ -129,7 +129,7 @@ export async function notifyConsumerAccepted(negotiationId: string): Promise<voi
  * Notify a consumer that their request is being escalated to the next provider
  * (previous provider was unavailable or didn't respond in time).
  */
-export async function notifyConsumerEscalating(consumerId: string): Promise<void> {
+export async function notifyConsumerEscalating(consumerId: string, nextRank?: number, totalMatches?: number): Promise<void> {
   const supabase = createServiceClient();
 
   try {
@@ -141,10 +141,13 @@ export async function notifyConsumerEscalating(consumerId: string): Promise<void
 
     if (!consumer) return;
 
+    const progressNote = nextRank && totalMatches
+      ? ` (provider ${nextRank} of ${totalMatches})`
+      : '';
     const message =
-      `🔄 Still working on it — the first provider wasn't available, ` +
-      `so we're reaching out to the next one on your list.\n\n` +
-      `Hang tight, you'll be notified as soon as someone confirms.`;
+      `🔄 <b>Still on it!</b>\n\n` +
+      `The first provider wasn't available — we're checking the next one${progressNote}.\n\n` +
+      `You'll be notified as soon as someone confirms. Sit tight!`;
 
     const telegramChatId = consumer.telegram_chat_id ||
       (consumer.phone?.startsWith('tg:') ? consumer.phone.slice(3) : null);

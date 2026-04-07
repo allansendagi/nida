@@ -279,6 +279,19 @@ async function handleCallbackQuery(callbackQuery: TelegramCallbackQuery): Promis
   const messageId = String(callbackQuery.message?.message_id);
   const data = callbackQuery.data;
 
+  // Deduplicate: Telegram retries callbacks if server is slow — must answer first to clear spinner
+  const redis = getRedis();
+  if (redis && callbackId) {
+    const dedupKey = `tg_cb:${callbackId}`;
+    const seen = await redis.get(dedupKey).catch(() => null);
+    if (seen) {
+      console.log(`Skipping duplicate callback ${callbackId}`);
+      await telegramAdapter.answerCallbackQuery(callbackId, '');
+      return;
+    }
+    await redis.set(dedupKey, '1', { ex: 120 }).catch(() => {});
+  }
+
   if (!data) {
     await telegramAdapter.answerCallbackQuery(callbackId, 'Invalid action');
     return;
@@ -378,7 +391,7 @@ async function handleCallbackQuery(callbackQuery: TelegramCallbackQuery): Promis
       // Create execution record so dashboard shows contact info
       if (neg?.intent) {
         const { generateExecutionId } = await import('@/lib/utils');
-        void supabase.from('executions').insert({
+        const { error: execError } = await supabase.from('executions').insert({
           execution_id: generateExecutionId(),
           negotiation_id: negotiationId,
           agreed_terms: { price: 0, currency: 'QAR', date: new Date().toISOString(), warranty_days: 0, payment_method: 'tbd', cancellation: { free_until: new Date().toISOString(), fee: 0 } },
@@ -393,9 +406,12 @@ async function handleCallbackQuery(callbackQuery: TelegramCallbackQuery): Promis
               : {}),
           },
         });
+        if (execError) console.error('[accept] Failed to create execution record:', execError.message);
 
         // Update intent to executing
-        await supabase.from('intents').update({ status: 'executing' }).eq('id', neg.intent.id);
+        const { error: intentError } = await supabase
+          .from('intents').update({ status: 'executing' }).eq('id', neg.intent.id);
+        if (intentError) console.error('[accept] Failed to update intent to executing:', intentError.message);
       }
 
       // Notify the consumer via their channel (Telegram or WhatsApp)

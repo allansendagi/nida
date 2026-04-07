@@ -156,11 +156,12 @@ export async function getOrCreateConversation(phone: string): Promise<Conversati
       .eq('id', recentCompleted.intent_id)
       .single();
 
-    if (recentIntent) {
+    if (recentIntent && !['no_providers', 'cancelled'].includes(recentIntent.status)) {
       const { category, location, urgency } = recentIntent.intent_data as { category: string; location: { zone: string }; urgency: string };
       const contextNote = `[Context: This user just submitted a ${category} request in ${location?.zone} (${urgency}). Status: ${recentIntent.status}. They may be following up on that request or starting a new one.]`;
       seedMessages = [{ role: 'assistant', content: contextNote, timestamp: new Date().toISOString() }];
     }
+    // cancelled/no_providers: start fresh with no seeded context
   }
 
   // Create new conversation
@@ -269,6 +270,27 @@ export async function processMessage(
       const response = statusReplies[activeIntent.status] || `You have an active request. Type *cancel* to cancel it.`;
       await addMessageToConversation(conversation.id, 'assistant', response);
       return { response, intentCreated: false, conversationId: conversation.id };
+    }
+
+    // If no active request but one was just cancelled/failed, acknowledge it before going to AI
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+    const { data: recentlyCancelled } = await supabase
+      .from('intents')
+      .select('id, status, intent_data')
+      .eq('consumer_id', updatedConv.consumer_id)
+      .in('status', ['cancelled', 'no_providers'])
+      .gte('created_at', fiveMinutesAgo)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (recentlyCancelled) {
+      const category = (recentlyCancelled.intent_data?.category as string)?.split('.').pop()?.replace(/_/g, ' ') || 'service';
+      const msg = recentlyCancelled.status === 'cancelled'
+        ? `Your ${category} request was just cancelled. Would you like to submit a new one? Just tell me what you need!`
+        : `We couldn't find an available provider for your ${category} request this time. Would you like to try again? Just describe what you need.`;
+      await addMessageToConversation(conversation.id, 'assistant', msg);
+      return { response: msg, intentCreated: false, conversationId: conversation.id };
     }
 
     // Process through AI intake
