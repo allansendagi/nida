@@ -24,7 +24,7 @@ export async function notifyAdminNoProviders(
   const zone = intentData.location?.zone?.replace(/_/g, ' ') || 'Unknown zone';
   const urgency = intentData.urgency || 'unknown';
   const budget = intentData.budget
-    ? `${intentData.budget.min ?? '?'}–${intentData.budget.max ?? '?'} ${intentData.budget.currency ?? 'QAR'}`
+    ? `${intentData.budget.min ?? '?'}–${intentData.budget.max ?? '?'} QAR`
     : 'Not specified';
 
   const message =
