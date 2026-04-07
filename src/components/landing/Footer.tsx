@@ -106,7 +106,14 @@ export function Footer() {
           </p>
           <p className="text-sm text-muted-foreground">
             A product of{' '}
-            <span className="text-foreground/60 font-medium">Escape Ventures LLC</span>
+            <a
+              href="https://escventures.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-foreground/60 font-medium hover:text-foreground transition-colors"
+            >
+              Escape Ventures LLC
+            </a>
           </p>
         </div>
       </div>
