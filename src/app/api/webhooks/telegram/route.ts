@@ -148,12 +148,13 @@ async function handleMessage(message: TelegramMessage): Promise<void> {
   }
 
   // Detect status queries — intercept before sending to AI
+  const isCancelIntent = /\bcancel\b/i.test(text);
   const statusPhrases = ['status', 'update', 'any news', 'what happened', 'my request',
-    'did anyone', 'found someone', 'still waiting', 'cancel my'];
-  const isStatusQuery = statusPhrases.some(p => text.toLowerCase().includes(p));
+    'did anyone', 'found someone', 'still waiting'];
+  const isStatusQuery = isCancelIntent || statusPhrases.some(p => text.toLowerCase().includes(p));
 
   if (isStatusQuery) {
-    await handleStatusQuery(chatId);
+    await handleStatusQuery(chatId, isCancelIntent);
     return;
   }
 
@@ -642,7 +643,7 @@ async function handleContactSharing(chatId: string, contact: TelegramContact): P
 /**
  * Reply with the status of the consumer's most recent request.
  */
-async function handleStatusQuery(chatId: string): Promise<void> {
+async function handleStatusQuery(chatId: string, isCancelIntent = false): Promise<void> {
   const supabase = createServiceClient();
 
   // Find consumer by telegram_chat_id or legacy tg: phone
@@ -690,7 +691,19 @@ async function handleStatusQuery(chatId: string): Promise<void> {
 
   if (intent.status === 'executing' || intent.status === 'settled') {
     const businessName = (acceptedNeg?.businesses as { display_name: string }[] | null)?.[0]?.display_name || 'A provider';
-    text = `✅ <b>${businessName} accepted your ${category} request!</b>\n\nThey should be in touch with you shortly.`;
+    if (isCancelIntent && intent.status === 'executing') {
+      text = `⚠️ <b>${businessName} has already accepted your ${category} request.</b>\n\nAre you sure you want to cancel? They'll be notified immediately.`;
+      replyMarkup = {
+        inline_keyboard: [[{ text: '❌ Yes, cancel the request', callback_data: `cancel:${intent.id}` }]],
+      };
+    } else {
+      text = `✅ <b>${businessName} accepted your ${category} request!</b>\n\nThey should be in touch with you shortly.`;
+      if (intent.status === 'executing') {
+        replyMarkup = {
+          inline_keyboard: [[{ text: '❌ Cancel this request', callback_data: `cancel:${intent.id}` }]],
+        };
+      }
+    }
   } else if (intent.status === 'no_providers') {
     text = `😔 We couldn't find an available provider for your ${category} request.\n\nSend a new message to try again — sometimes availability changes!`;
   } else if (intent.status === 'cancelled') {
@@ -699,12 +712,16 @@ async function handleStatusQuery(chatId: string): Promise<void> {
     const expiry = offeredNeg.offer_expires_at ? new Date(offeredNeg.offer_expires_at) : null;
     const minsLeft = expiry ? Math.max(0, Math.round((expiry.getTime() - Date.now()) / 60000)) : null;
     const timeStr = minsLeft !== null ? ` They have ${minsLeft} minute${minsLeft !== 1 ? 's' : ''} to respond.` : '';
-    text = `⏳ <b>Almost there!</b>\n\nWe've contacted a provider for your ${category} request.${timeStr}\n\nYou'll be notified as soon as they respond.`;
+    text = isCancelIntent
+      ? `Your ${category} request is currently with a provider.${timeStr}\n\nCancel it?`
+      : `⏳ <b>Almost there!</b>\n\nWe've contacted a provider for your ${category} request.${timeStr}\n\nYou'll be notified as soon as they respond.`;
     replyMarkup = {
       inline_keyboard: [[{ text: '❌ Cancel this request', callback_data: `cancel:${intent.id}` }]],
     };
   } else if (intent.status === 'structured' || intent.status === 'matching') {
-    text = `🔍 <b>Searching for providers...</b>\n\nWe're matching your ${category} request with the best available providers.\n\nYou'll hear back shortly!`;
+    text = isCancelIntent
+      ? `We're still searching for a provider for your ${category} request. Cancel it?`
+      : `🔍 <b>Searching for providers...</b>\n\nWe're matching your ${category} request with the best available providers.\n\nYou'll hear back shortly!`;
     replyMarkup = {
       inline_keyboard: [[{ text: '❌ Cancel this request', callback_data: `cancel:${intent.id}` }]],
     };
@@ -759,10 +776,12 @@ async function handleCancelCallback(
     return;
   }
 
-  if (['cancelled', 'settled', 'executing'].includes(intent.status)) {
+  if (['cancelled', 'settled'].includes(intent.status)) {
     await telegramAdapter.answerCallbackQuery(callbackId, 'This request cannot be cancelled now');
     return;
   }
+
+  const wasAccepted = intent.status === 'executing';
 
   // Cancel intent and all pending/offered negotiations
   await supabase.from('intents').update({ status: 'cancelled' }).eq('id', intentId);
@@ -770,12 +789,37 @@ async function handleCancelCallback(
     .from('negotiations')
     .update({ offer_state: 'cancelled' })
     .eq('intent_id', intentId)
-    .in('offer_state', ['pending', 'offered']);
+    .in('offer_state', ['pending', 'offered', 'accepted']);
 
-  await telegramAdapter.editMessageText(
-    chatId, messageId,
-    '❌ <b>Request cancelled.</b>\n\nYour request has been cancelled. Send a new message whenever you need help!'
-  );
+  // If a provider had already accepted, cancel the execution and notify them
+  if (wasAccepted) {
+    const { data: executions } = await supabase
+      .from('executions')
+      .select('id, negotiation:negotiations!inner(business_id, businesses(telegram_chat_id, display_name))')
+      .eq('negotiation.intent_id', intentId)
+      .in('status', ['confirmed']);
+
+    for (const exec of executions ?? []) {
+      await supabase.from('executions').update({ status: 'cancelled' }).eq('id', exec.id);
+
+      // Notify the business provider via Telegram
+      type ExecNeg = { business_id: string; businesses: { telegram_chat_id: string | null; display_name: string }[] | null };
+      const neg = exec.negotiation as unknown as ExecNeg | null;
+      const bizChatId = neg?.businesses?.[0]?.telegram_chat_id;
+      const bizName = neg?.businesses?.[0]?.display_name || 'Provider';
+      if (bizChatId) {
+        await sendTelegramReply(bizChatId,
+          `ℹ️ <b>Job cancelled by customer</b>\n\nThe customer has cancelled their request. No action needed from you.\n\nThank you, ${bizName} — we'll keep sending you new leads!`
+        ).catch(() => {});
+      }
+    }
+  }
+
+  const confirmText = wasAccepted
+    ? '❌ <b>Request cancelled.</b>\n\nThe provider has been notified. No worries — send a new message whenever you need help!'
+    : '❌ <b>Request cancelled.</b>\n\nYour request has been cancelled. Send a new message whenever you need help!';
+
+  await telegramAdapter.editMessageText(chatId, messageId, confirmText);
   await telegramAdapter.answerCallbackQuery(callbackId, 'Request cancelled');
 }
 

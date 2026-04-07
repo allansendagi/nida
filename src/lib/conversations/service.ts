@@ -445,7 +445,7 @@ async function completeConversation(
     const dispatchResult = await startSequentialDispatch(intent.id);
     console.log(`[intent:${intent.id}] Dispatch started — offered to: ${dispatchResult.offeredTo || 'none'}`);
     const providerWord = matches.length === 1 ? 'provider' : 'providers';
-    dispatchMessage = `✅ Found ${matches.length} matching ${providerWord}!\n\nI've notified the top match and they have 15 minutes to accept. You'll hear from us the moment they confirm.\n\nSit tight — this usually takes just a few minutes.`;
+    dispatchMessage = `✅ Found ${matches.length} matching ${providerWord}!\n\nI've notified the top match and they have 15 minutes to accept. You'll hear from us the moment they confirm.\n\nSit tight — this usually takes just a few minutes.\n\n💡 Need to cancel? Just type <b>cancel</b> anytime.`;
   } else {
     dispatchMessage = "😔 We searched but couldn't find a matching provider in your area right now.\n\nWe've saved your request and will notify you the moment someone becomes available. You don't need to do anything — just sit tight!";
   }

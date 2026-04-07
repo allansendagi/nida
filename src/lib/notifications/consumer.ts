@@ -71,6 +71,7 @@ export async function notifyConsumerAccepted(negotiationId: string): Promise<voi
     const businessName = business.display_name || 'A service provider';
     const businessPhone = business.phone || null;
     const category = intentData?.category?.split('.').pop()?.replace(/_/g, ' ') || 'your service';
+    const intentId = negotiation.intent?.id;
 
     const message =
       `🎉 <b>Great news!</b>\n\n` +
@@ -84,7 +85,27 @@ export async function notifyConsumerAccepted(negotiationId: string): Promise<voi
       (consumer.phone?.startsWith('tg:') ? consumer.phone.slice(3) : null);
 
     if (telegramChatId) {
-      await sendTelegramReply(telegramChatId, message);
+      // For Telegram, include an inline cancel button so the consumer stays in control
+      const botToken = process.env.TELEGRAM_BOT_TOKEN;
+      if (botToken && intentId) {
+        await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: AbortSignal.timeout(8000),
+          body: JSON.stringify({
+            chat_id: telegramChatId,
+            text: message,
+            parse_mode: 'HTML',
+            reply_markup: {
+              inline_keyboard: [[
+                { text: '❌ Cancel this request', callback_data: `cancel:${intentId}` },
+              ]],
+            },
+          }),
+        }).catch(err => console.error('Failed to send accepted notification:', err));
+      } else {
+        await sendTelegramReply(telegramChatId, message);
+      }
       console.log(`Consumer ${consumer.id} notified via Telegram (chat: ${telegramChatId})`);
       return;
     }
