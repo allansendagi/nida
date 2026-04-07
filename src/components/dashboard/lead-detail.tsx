@@ -47,7 +47,7 @@ const offerStateMessages: Record<OfferState, string> = {
   accepted: 'You accepted this lead.',
   rejected: 'You rejected this lead.',
   expired: 'Your offer window expired.',
-  cancelled: 'This lead was accepted by another provider.',
+  cancelled: 'This lead was cancelled.',
 };
 
 const urgencyColors: Record<string, string> = {
@@ -64,7 +64,7 @@ export function LeadDetail({ negotiation, execution, businessId }: LeadDetailPro
   const [completeLoading, setCompleteLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [timeRemaining, setTimeRemaining] = useState<string | null>(null);
-  const [completed, setCompleted] = useState(execution?.status === 'completed');
+  const [completed, setCompleted] = useState(execution?.status === 'completed' || execution?.status === 'cancelled');
   const router = useRouter();
 
   const { intent } = negotiation;
@@ -392,6 +392,23 @@ export function LeadDetail({ negotiation, execution, businessId }: LeadDetailPro
         <Alert>
           {offerStateMessages[negotiation.offer_state]}
         </Alert>
+      )}
+
+      {/* Customer Rating — shown after job is rated */}
+      {execution?.consumer_rating && (
+        <div className="flex items-center gap-3 rounded-lg bg-yellow-50 border border-yellow-200 px-4 py-3">
+          <span className="text-yellow-600 font-medium">Customer Rating:</span>
+          <span className="text-yellow-500 text-lg">{'⭐'.repeat(execution.consumer_rating)}</span>
+          <span className="text-yellow-700 font-semibold">{execution.consumer_rating}/5</span>
+        </div>
+      )}
+
+      {/* Cancelled by customer */}
+      {execution?.status === 'cancelled' && isClaimed && (
+        <div className="flex items-center gap-2 text-red-700 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+          <X className="h-5 w-5" />
+          <span className="font-medium">This job was cancelled by the customer.</span>
+        </div>
       )}
 
       {/* Mark Complete Button */}

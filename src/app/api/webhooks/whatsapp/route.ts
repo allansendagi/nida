@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { processMessage } from '@/lib/conversations/service';
-import { sendWhatsAppReply, sendWhatsAppReaction } from '@/lib/notifications/channels/whatsapp';
+import { sendWhatsAppReply, sendWhatsAppReaction, markWhatsAppMessageRead } from '@/lib/notifications/channels/whatsapp';
+import { sendTelegramReply } from '@/lib/notifications/channels/telegram';
 import { createServiceClient } from '@/lib/supabase/server';
 import crypto from 'crypto';
 
@@ -130,12 +131,12 @@ async function handleWhatsAppCancel(phone: string): Promise<void> {
     return;
   }
 
-  // Find active intent
+  // Find any non-terminal intent for this consumer
   const { data: intent } = await supabase
     .from('intents')
-    .select('id')
+    .select('id, status')
     .eq('consumer_id', consumer.id)
-    .in('status', ['active', 'pending', 'dispatching'])
+    .not('status', 'in', '("cancelled","settled")')
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -145,26 +146,44 @@ async function handleWhatsAppCancel(phone: string): Promise<void> {
     return;
   }
 
-  // Cancel intent and all pending negotiations
+  const wasExecuting = intent.status === 'executing';
+
+  // Cancel intent and all pending/offered negotiations
   await supabase.from('intents').update({ status: 'cancelled' }).eq('id', intent.id);
   await supabase.from('negotiations')
     .update({ offer_state: 'cancelled' })
     .eq('intent_id', intent.id)
     .in('offer_state', ['pending', 'offered', 'accepted']);
 
-  // Cancel any active execution
-  const { data: execution } = await supabase
-    .from('executions')
-    .select('id')
-    .eq('intent_id', intent.id)
-    .in('status', ['confirmed', 'active'])
-    .maybeSingle();
+  // Cancel executions and notify the business provider
+  if (wasExecuting) {
+    const { data: executions } = await supabase
+      .from('executions')
+      .select('id, negotiation:negotiations!inner(business_id, businesses(telegram_chat_id, display_name))')
+      .eq('negotiation.intent_id', intent.id)
+      .in('status', ['confirmed']);
 
-  if (execution) {
-    await supabase.from('executions').update({ status: 'cancelled' }).eq('id', execution.id);
+    for (const exec of executions ?? []) {
+      await supabase.from('executions').update({ status: 'cancelled' }).eq('id', exec.id);
+
+      type ExecNeg = { business_id: string; businesses: { telegram_chat_id: string | null; display_name: string }[] | null };
+      const neg = exec.negotiation as unknown as ExecNeg | null;
+      const bizChatId = neg?.businesses?.[0]?.telegram_chat_id;
+      const bizName = neg?.businesses?.[0]?.display_name || 'Provider';
+
+      if (bizChatId) {
+        await sendTelegramReply(bizChatId,
+          `ℹ️ <b>Job cancelled by customer</b>\n\nThe customer has cancelled their request. No action needed from you.\n\nThank you, ${bizName} — we'll keep sending you new leads!`
+        ).catch(() => {});
+      }
+    }
   }
 
-  await sendWhatsAppReply(phone, "✅ Your request has been cancelled. Message us anytime to start a new search.");
+  const msg = wasExecuting
+    ? "❌ Your request has been cancelled. The provider has been notified. Send a new message anytime to start fresh!"
+    : "❌ Your request has been cancelled. Send a new message anytime to start fresh!";
+
+  await sendWhatsAppReply(phone, msg);
 }
 
 async function handleWhatsAppRating(phone: string, score: number, executionId: string): Promise<void> {
@@ -205,6 +224,18 @@ async function handleWhatsAppRating(phone: string, score: number, executionId: s
   await sendWhatsAppReply(phone, `Thank you! You gave ${stars} — your feedback helps the Nida community. 🙏`);
 }
 
+/** Parse text input as a 1-5 rating. Handles "5", "⭐⭐⭐⭐⭐", "⭐⭐⭐⭐⭐ Excellent", etc. */
+function parseRatingText(text: string): number | null {
+  const t = text.trim();
+  // Count star emojis
+  const stars = (t.match(/⭐/g) || []).length;
+  if (stars >= 1 && stars <= 5) return stars;
+  // Plain number
+  const num = parseInt(t);
+  if (!isNaN(num) && num >= 1 && num <= 5) return num;
+  return null;
+}
+
 async function processWhatsAppMessage(
   phone: string,
   text: string,
@@ -212,14 +243,39 @@ async function processWhatsAppMessage(
 ): Promise<void> {
   console.log(`Processing WhatsApp message ${messageId} from ${phone}`);
 
+  // Mark message as read immediately — sends blue double ticks (world-class live feel)
+  markWhatsAppMessageRead(messageId).catch(() => {});
+
   // Intercept cancel command before AI processing
   if (text.trim().toLowerCase() === 'cancel') {
     await handleWhatsAppCancel(phone);
     return;
   }
 
+  // Intercept text-based rating input (fallback if user types instead of tapping list)
+  const ratingScore = parseRatingText(text);
+  if (ratingScore !== null) {
+    const supabase = createServiceClient();
+    const { data: consumer } = await supabase
+      .from('consumers').select('id').eq('phone', phone).maybeSingle();
+    if (consumer) {
+      const { data: pendingExec } = await supabase
+        .from('executions')
+        .select('id, negotiation:negotiations!inner(intent:intents!inner(consumer_id))')
+        .eq('rating_status', 'requested')
+        .eq('negotiation.intent.consumer_id', consumer.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (pendingExec) {
+        await handleWhatsAppRating(phone, ratingScore, pendingExec.id);
+        return;
+      }
+    }
+  }
+
   try {
-    // React to the user's message with ⏳ — elegant processing indicator
+    // React to the user's message with ⏳ — visible processing indicator
     sendWhatsAppReaction(phone, messageId, '⏳').catch(() => {});
 
     // Process through conversation service (AI intake)
@@ -230,6 +286,9 @@ async function processWhatsAppMessage(
       intentId: result.intentId,
       responseLength: result.response.length,
     });
+
+    // Remove ⏳ reaction now that response is ready
+    sendWhatsAppReaction(phone, messageId, '').catch(() => {});
 
     // Send actual response back to user via WhatsApp
     const sendResult = await sendWhatsAppReply(phone, result.response);

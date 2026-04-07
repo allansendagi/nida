@@ -123,10 +123,11 @@ export interface Execution {
   execution_id: string;
   negotiation_id: string;
   agreed_terms: AgreedTerms;
-  status: 'confirmed' | 'completed' | 'disputed';
+  status: 'confirmed' | 'completed' | 'disputed' | 'cancelled';
   consumer_contact: ConsumerContact | null;
   created_at: string;
   completed_at: string | null;
+  consumer_rating: number | null;
   // Rating system v2 fields
   rating_status: RatingStatus;
   rating_requested_at: string | null;

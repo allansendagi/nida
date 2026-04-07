@@ -138,6 +138,29 @@ export class WhatsAppAdapter implements ChannelAdapter {
 export const whatsappAdapter = new WhatsAppAdapter();
 
 /**
+ * Mark an incoming WhatsApp message as read — sends blue double ticks immediately,
+ * giving the impression of a live person on the other end.
+ */
+export async function markWhatsAppMessageRead(messageId: string): Promise<void> {
+  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+  const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
+  if (!phoneNumberId || !accessToken) return;
+
+  await fetch(`${WHATSAPP_API_URL}/${phoneNumberId}/messages`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      messaging_product: 'whatsapp',
+      status: 'read',
+      message_id: messageId,
+    }),
+  }).catch(err => console.error('WhatsApp mark-read error:', err));
+}
+
+/**
  * Send a reaction to an incoming WhatsApp message
  * Used as an elegant "processing" indicator instead of a text bubble
  */
