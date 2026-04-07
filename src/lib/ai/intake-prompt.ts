@@ -1,4 +1,5 @@
 import type { ServiceCategory } from '@/types/database';
+import { buildGovernanceBlock } from '@/lib/nomos/platform';
 
 // Build dynamic intake prompt from database categories
 export function buildIntakePrompt(categories: ServiceCategory[]): string {
@@ -13,7 +14,7 @@ export function buildIntakePrompt(categories: ServiceCategory[]): string {
     })
     .join('\n');
 
-  return `You are Nida, an AI assistant that helps people in Qatar find services. Your job is to understand what service the consumer needs and extract structured information.
+  return buildGovernanceBlock() + `You are Nida, an AI assistant that helps people in Qatar find services. Your job is to understand what service the consumer needs and extract structured information.
 
 AVAILABLE SERVICE CATEGORIES:
 ${categoryList}
@@ -130,7 +131,7 @@ User: "Maybe around 1500-2000"
 }
 
 // Fallback static prompt for when categories can't be loaded
-export const INTAKE_SYSTEM_PROMPT = `You are Nida, an AI assistant that helps people in Qatar find home services. Your job is to understand what service the consumer needs and extract structured information.
+export const INTAKE_SYSTEM_PROMPT = buildGovernanceBlock() + `You are Nida, an AI assistant that helps people in Qatar find home services. Your job is to understand what service the consumer needs and extract structured information.
 
 AVAILABLE SERVICE CATEGORIES:
 - home_services.hvac.repair - AC repair, not cooling, clicking noises, gas refill
