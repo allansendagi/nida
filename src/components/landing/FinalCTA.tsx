@@ -22,15 +22,13 @@ export function FinalCTA() {
               Just send a message. Nida handles matching, confirmation, and contact exchange — in under 15 minutes.
             </p>
             <div className="mt-8 flex flex-col sm:flex-row gap-3">
-              <a
-                href={WHATSAPP_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-center gap-2.5 rounded-xl bg-[#25D366] px-5 py-3 text-sm font-semibold text-white hover:bg-[#20bb5a] transition-colors"
-              >
-                <Image src="/logos/whatsapp.png" alt="" width={16} height={16} className="rounded-sm flex-shrink-0" />
+              <div className="relative flex items-center justify-center gap-2.5 rounded-xl bg-[#25D366]/25 px-5 py-3 text-sm font-semibold text-white/35 cursor-not-allowed">
+                <Image src="/logos/whatsapp.png" alt="" width={16} height={16} className="rounded-sm flex-shrink-0 opacity-40" />
                 WhatsApp
-              </a>
+                <span className="absolute -top-2 -right-2 rounded-full bg-white/10 border border-white/15 px-1.5 py-0.5 text-[9px] font-semibold tracking-wide text-white/50 uppercase">
+                  Soon
+                </span>
+              </div>
               <a
                 href={TELEGRAM_URL}
                 target="_blank"
