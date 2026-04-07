@@ -659,14 +659,18 @@ async function handleContactSharing(chatId: string, contact: TelegramContact): P
 async function handleStatusQuery(chatId: string, isCancelIntent = false): Promise<void> {
   const supabase = createServiceClient();
 
-  // Find consumer by telegram_chat_id or legacy tg: phone
-  const { data: consumer } = await supabase
-    .from('consumers')
-    .select('id')
-    .eq('telegram_chat_id', chatId)
-    .maybeSingle();
+  // Find consumer by telegram_chat_id, with fallback to legacy tg: phone format
+  let consumerId: string | null = null;
 
-  const consumerId = consumer?.id ?? null;
+  const { data: byTelegramId } = await supabase
+    .from('consumers').select('id').eq('telegram_chat_id', chatId).maybeSingle();
+  if (byTelegramId) {
+    consumerId = byTelegramId.id;
+  } else {
+    const { data: byLegacy } = await supabase
+      .from('consumers').select('id').eq('phone', `tg:${chatId}`).maybeSingle();
+    if (byLegacy) consumerId = byLegacy.id;
+  }
 
   if (!consumerId) {
     await sendTelegramReply(chatId, "You don't have any active requests. Tell me what you need help with!");
