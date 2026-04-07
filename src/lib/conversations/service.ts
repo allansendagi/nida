@@ -258,6 +258,27 @@ export async function processMessage(
 
     // Check if AI has enough info to create intent
     if (intakeResult.complete && intakeResult.intent_data) {
+      // Guard: don't create a new intent if the consumer already has one active
+      const { data: existingActive } = await supabase
+        .from('intents')
+        .select('id, status')
+        .eq('consumer_id', updatedConv.consumer_id)
+        .in('status', ['structured', 'matching', 'executing'])
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (existingActive) {
+        const statusMsg: Record<string, string> = {
+          matching: "We're still searching for a provider for your current request — sit tight! Type *cancel* if you'd like to cancel it and start fresh.",
+          executing: "A provider has already accepted your request and will be in touch shortly! Type *cancel* if you need to cancel.",
+          structured: "We're processing your current request. Type *cancel* if you'd like to start a new one.",
+        };
+        const response = statusMsg[existingActive.status] || "You already have an active request. Type *cancel* to cancel it and submit a new one.";
+        await addMessageToConversation(conversation.id, 'assistant', response);
+        return { response, intentCreated: false, conversationId: conversation.id };
+      }
+
       // Create the intent and start matching
       const { intent, response } = await completeConversation(
         conversation.id,
