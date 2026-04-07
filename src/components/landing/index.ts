@@ -4,6 +4,7 @@ export { StatsBar } from './StatsBar';
 export { HowItWorks } from './HowItWorks';
 export { WhyNida } from './WhyNida';
 export { NomosProtocol } from './NomosProtocol';
+export { NidaOnNomos } from './NidaOnNomos';
 export { FAQ } from './FAQ';
 export { FinalCTA } from './FinalCTA';
 export { Footer } from './Footer';

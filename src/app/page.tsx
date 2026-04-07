@@ -5,6 +5,7 @@ import {
   HowItWorks,
   WhyNida,
   NomosProtocol,
+  NidaOnNomos,
   FAQ,
   FinalCTA,
   Footer,
@@ -21,6 +22,7 @@ export default function Home() {
         <HowItWorks />
         <WhyNida />
         <NomosProtocol />
+        <NidaOnNomos />
         <FAQ />
         <FinalCTA />
       </main>
