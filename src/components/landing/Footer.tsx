@@ -105,7 +105,8 @@ export function Footer() {
             &copy; {new Date().getFullYear()} Nida. All rights reserved.
           </p>
           <p className="text-sm text-muted-foreground">
-            NOMOS Protocol v0.1.0 - Qatar Home Services
+            A product of{' '}
+            <span className="text-foreground/60 font-medium">Escape Ventures LLC</span>
           </p>
         </div>
       </div>
