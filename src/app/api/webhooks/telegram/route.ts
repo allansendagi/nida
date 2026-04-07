@@ -306,6 +306,19 @@ async function handleCallbackQuery(callbackQuery: TelegramCallbackQuery): Promis
     return;
   }
 
+  // Handle cancel reason callback: cancel_reason:reason:intentId
+  if (action === 'cancel_reason') {
+    const reason = parts[1];
+    const reasonIntentId = parts[2];
+    const validReasons = ['found_someone_else', 'taking_too_long', 'changed_mind', 'other'];
+    if (!reason || !validReasons.includes(reason) || !reasonIntentId || !UUID_REGEX.test(reasonIntentId)) {
+      await telegramAdapter.answerCallbackQuery(callbackId, 'Invalid');
+      return;
+    }
+    await handleCancelReasonCallback(callbackId, chatId, messageId, reasonIntentId, reason);
+    return;
+  }
+
   // Handle cancel intent callback: cancel:intentId
   if (action === 'cancel') {
     const intentId = parts[1];
@@ -821,6 +834,47 @@ async function handleCancelCallback(
 
   await telegramAdapter.editMessageText(chatId, messageId, confirmText);
   await telegramAdapter.answerCallbackQuery(callbackId, 'Request cancelled');
+
+  // After cancel is confirmed, ask for reason — voluntary, frictionless
+  const botToken = process.env.TELEGRAM_BOT_TOKEN;
+  if (botToken) {
+    await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: AbortSignal.timeout(8000),
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: 'Mind telling us why? (optional — helps us improve)',
+        reply_markup: {
+          inline_keyboard: [
+            [
+              { text: 'Found someone else', callback_data: `cancel_reason:found_someone_else:${intentId}` },
+              { text: 'Taking too long', callback_data: `cancel_reason:taking_too_long:${intentId}` },
+            ],
+            [
+              { text: 'Changed my mind', callback_data: `cancel_reason:changed_mind:${intentId}` },
+              { text: 'Other', callback_data: `cancel_reason:other:${intentId}` },
+            ],
+          ],
+        },
+      }),
+    }).catch(() => {});
+  }
+}
+
+/**
+ * Save a voluntary cancellation reason tapped after cancel confirmation.
+ */
+async function handleCancelReasonCallback(
+  callbackId: string, chatId: string, messageId: string, intentId: string, reason: string
+): Promise<void> {
+  const supabase = createServiceClient();
+  await supabase.from('intents').update({ cancellation_reason: reason }).eq('id', intentId);
+  await telegramAdapter.editMessageText(
+    chatId, messageId,
+    'Thanks for the feedback — it helps us improve. 🙏\n\nSend a new message whenever you need help!'
+  );
+  await telegramAdapter.answerCallbackQuery(callbackId, 'Thanks!');
 }
 
 /**
