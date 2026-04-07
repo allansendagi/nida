@@ -2,6 +2,7 @@ import Image from 'next/image';
 import { ChatDemo } from './ChatDemo';
 
 const TELEGRAM_URL = process.env.NEXT_PUBLIC_TELEGRAM_BOT_URL || 'https://t.me/nida_assistant_bot';
+const WHATSAPP_URL = 'https://wa.me/97455662830';
 
 export function Hero() {
   return (
@@ -38,13 +39,15 @@ export function Hero() {
 
             {/* CTAs */}
             <div className="mt-10 flex flex-col items-center lg:items-start gap-3 sm:flex-row">
-              <div className="relative flex items-center justify-center gap-2.5 rounded-xl bg-[#25D366]/30 px-6 py-3.5 text-sm font-semibold text-white/40 cursor-not-allowed min-w-[190px]">
-                <Image src="/logos/whatsapp.png" alt="" width={18} height={18} className="rounded-sm flex-shrink-0 opacity-40" />
+              <a
+                href={WHATSAPP_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2.5 rounded-xl bg-[#25D366] px-6 py-3.5 text-sm font-semibold text-white hover:bg-[#20ba58] transition-colors min-w-[190px]"
+              >
+                <Image src="/logos/whatsapp.png" alt="" width={18} height={18} className="rounded-sm flex-shrink-0" />
                 Chat on WhatsApp
-                <span className="absolute -top-2 -right-2 rounded-full bg-white/10 border border-white/15 px-1.5 py-0.5 text-[9px] font-semibold tracking-wide text-white/50 uppercase">
-                  Soon
-                </span>
-              </div>
+              </a>
               <a
                 href={TELEGRAM_URL}
                 target="_blank"

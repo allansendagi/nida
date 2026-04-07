@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient, createServiceClient } from '@/lib/supabase/server';
-import { sendTelegramReply } from '@/lib/notifications/channels/telegram';
+import { sendWhatsAppRatingRequest } from '@/lib/notifications/channels/whatsapp';
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -100,10 +100,13 @@ export async function POST(_request: Request, { params }: Props) {
         }).catch(err => console.error('Failed to send rating request:', err));
       }
     } else if (consumer?.phone && !consumer.phone.startsWith('tg:')) {
-      // WhatsApp fallback — plain message, no inline buttons
-      await sendTelegramReply(consumer.phone,
-        `Your ${category} job with ${business.display_name} is complete! Thank you for using Nida.`
-      ).catch(() => {});
+      // WhatsApp consumer — send interactive rating prompt
+      await sendWhatsAppRatingRequest(
+        consumer.phone,
+        executionId,
+        business.display_name,
+        category
+      );
     }
 
     return NextResponse.json({ success: true });

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { processMessage } from '@/lib/conversations/service';
-import { sendWhatsAppReply } from '@/lib/notifications/channels/whatsapp';
+import { sendWhatsAppReply, sendWhatsAppReaction } from '@/lib/notifications/channels/whatsapp';
+import { createServiceClient } from '@/lib/supabase/server';
 import crypto from 'crypto';
 
 /**
@@ -78,9 +79,18 @@ export async function POST(request: Request) {
         if (message.type === 'text') {
           const text = message.text?.body;
           console.log(`Message from ${from}: ${text}`);
-
-          // Process message through AI intake
           await processWhatsAppMessage(from, text, message.id);
+        }
+
+        // Handle interactive list replies (e.g. rating selections)
+        if (message.type === 'interactive' && message.interactive?.type === 'list_reply') {
+          const replyId: string = message.interactive.list_reply.id;
+          if (replyId.startsWith('rate:')) {
+            const parts = replyId.split(':');
+            const score = parseInt(parts[1]);
+            const executionId = parts[2];
+            await handleWhatsAppRating(from, score, executionId);
+          }
         }
       }
     }
@@ -105,6 +115,96 @@ export async function POST(request: Request) {
 /**
  * Process an incoming WhatsApp message through the AI intake flow
  */
+async function handleWhatsAppCancel(phone: string): Promise<void> {
+  const supabase = createServiceClient();
+
+  // Find consumer by phone
+  const { data: consumer } = await supabase
+    .from('consumers')
+    .select('id')
+    .eq('phone', phone)
+    .maybeSingle();
+
+  if (!consumer) {
+    await sendWhatsAppReply(phone, "No active request found to cancel.");
+    return;
+  }
+
+  // Find active intent
+  const { data: intent } = await supabase
+    .from('intents')
+    .select('id')
+    .eq('consumer_id', consumer.id)
+    .in('status', ['active', 'pending', 'dispatching'])
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!intent) {
+    await sendWhatsAppReply(phone, "No active request found to cancel.");
+    return;
+  }
+
+  // Cancel intent and all pending negotiations
+  await supabase.from('intents').update({ status: 'cancelled' }).eq('id', intent.id);
+  await supabase.from('negotiations')
+    .update({ offer_state: 'cancelled' })
+    .eq('intent_id', intent.id)
+    .in('offer_state', ['pending', 'offered', 'accepted']);
+
+  // Cancel any active execution
+  const { data: execution } = await supabase
+    .from('executions')
+    .select('id')
+    .eq('intent_id', intent.id)
+    .in('status', ['confirmed', 'active'])
+    .maybeSingle();
+
+  if (execution) {
+    await supabase.from('executions').update({ status: 'cancelled' }).eq('id', execution.id);
+  }
+
+  await sendWhatsAppReply(phone, "✅ Your request has been cancelled. Message us anytime to start a new search.");
+}
+
+async function handleWhatsAppRating(phone: string, score: number, executionId: string): Promise<void> {
+  const supabase = createServiceClient();
+
+  const { data: execution } = await supabase
+    .from('executions')
+    .select('id, negotiation:negotiations(business_id)')
+    .eq('id', executionId)
+    .maybeSingle();
+
+  if (!execution) return;
+
+  await supabase
+    .from('executions')
+    .update({ consumer_rating: score, rating_status: 'rated' })
+    .eq('id', executionId);
+
+  // Recalculate business average rating
+  const businessId = (execution.negotiation as { business_id?: string } | null)?.business_id;
+  if (businessId) {
+    const { data: ratings } = await supabase
+      .from('executions')
+      .select('consumer_rating, negotiation:negotiations!inner(business_id)')
+      .eq('negotiation.business_id', businessId)
+      .not('consumer_rating', 'is', null);
+
+    if (ratings && ratings.length > 0) {
+      const avg = ratings.reduce((sum, r) => sum + (r.consumer_rating as number), 0) / ratings.length;
+      await supabase
+        .from('businesses')
+        .update({ rating_summary: { average: Math.round(avg * 10) / 10, count: ratings.length } })
+        .eq('id', businessId);
+    }
+  }
+
+  const stars = '⭐'.repeat(score);
+  await sendWhatsAppReply(phone, `Thank you! You gave ${stars} — your feedback helps the Nida community. 🙏`);
+}
+
 async function processWhatsAppMessage(
   phone: string,
   text: string,
@@ -112,10 +212,15 @@ async function processWhatsAppMessage(
 ): Promise<void> {
   console.log(`Processing WhatsApp message ${messageId} from ${phone}`);
 
+  // Intercept cancel command before AI processing
+  if (text.trim().toLowerCase() === 'cancel') {
+    await handleWhatsAppCancel(phone);
+    return;
+  }
+
   try {
-    // Send immediate acknowledgment so user knows Nida received their message
-    // WhatsApp has no native typing indicator, so this bridges the gap
-    await sendWhatsAppReply(phone, "⏳ Nida is on it...");
+    // React to the user's message with ⏳ — elegant processing indicator
+    sendWhatsAppReaction(phone, messageId, '⏳').catch(() => {});
 
     // Process through conversation service (AI intake)
     const result = await processMessage(phone, text);

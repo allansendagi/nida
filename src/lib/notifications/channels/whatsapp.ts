@@ -138,6 +138,84 @@ export class WhatsAppAdapter implements ChannelAdapter {
 export const whatsappAdapter = new WhatsAppAdapter();
 
 /**
+ * Send a reaction to an incoming WhatsApp message
+ * Used as an elegant "processing" indicator instead of a text bubble
+ */
+export async function sendWhatsAppReaction(
+  phone: string,
+  messageId: string,
+  emoji: string
+): Promise<void> {
+  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+  const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
+  if (!phoneNumberId || !accessToken) return;
+
+  const formattedPhone = phone.replace(/[\s+\-]/g, '');
+  await fetch(`${WHATSAPP_API_URL}/${phoneNumberId}/messages`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      messaging_product: 'whatsapp',
+      recipient_type: 'individual',
+      to: formattedPhone,
+      type: 'reaction',
+      reaction: { message_id: messageId, emoji },
+    }),
+  }).catch(err => console.error('WhatsApp reaction error:', err));
+}
+
+/**
+ * Send an interactive list rating request after job completion
+ */
+export async function sendWhatsAppRatingRequest(
+  phone: string,
+  executionId: string,
+  businessName: string,
+  category: string
+): Promise<void> {
+  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+  const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
+  if (!phoneNumberId || !accessToken) return;
+
+  const formattedPhone = phone.replace(/[\s+\-]/g, '');
+  await fetch(`${WHATSAPP_API_URL}/${phoneNumberId}/messages`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      messaging_product: 'whatsapp',
+      recipient_type: 'individual',
+      to: formattedPhone,
+      type: 'interactive',
+      interactive: {
+        type: 'list',
+        body: {
+          text: `✅ Your ${category} job with ${businessName} is complete!\n\nHow did it go? Your rating helps other customers find great providers.`,
+        },
+        action: {
+          button: 'Rate now',
+          sections: [{
+            title: 'Your Rating',
+            rows: [
+              { id: `rate:5:${executionId}`, title: '⭐⭐⭐⭐⭐ Excellent' },
+              { id: `rate:4:${executionId}`, title: '⭐⭐⭐⭐ Good' },
+              { id: `rate:3:${executionId}`, title: '⭐⭐⭐ OK' },
+              { id: `rate:2:${executionId}`, title: '⭐⭐ Poor' },
+              { id: `rate:1:${executionId}`, title: '⭐ Very Poor' },
+            ],
+          }],
+        },
+      },
+    }),
+  }).catch(err => console.error('WhatsApp rating request error:', err));
+}
+
+/**
  * Send a conversational reply to a WhatsApp user
  * Used for AI intake conversations (clarifying questions, confirmations, etc.)
  */
