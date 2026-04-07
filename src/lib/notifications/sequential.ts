@@ -439,7 +439,8 @@ export async function escalateToNextProvider(
 
     // Alert admin so they can source a provider
     const intentData = intent.intent_data as IntentData;
-    notifyAdminNoProviders(intentId, intentData).catch(err =>
+    const consumerPhone = (intent.consumer as { phone?: string } | null)?.phone;
+    notifyAdminNoProviders(intentId, intentData, consumerPhone).catch(err =>
       console.error('Failed to send admin no-providers alert:', err)
     );
 

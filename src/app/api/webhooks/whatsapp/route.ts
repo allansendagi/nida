@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { processMessage } from '@/lib/conversations/service';
-import { sendWhatsAppReply, sendWhatsAppReaction, markWhatsAppMessageRead } from '@/lib/notifications/channels/whatsapp';
+import { sendWhatsAppReply, markWhatsAppMessageRead } from '@/lib/notifications/channels/whatsapp';
 import { sendTelegramReply } from '@/lib/notifications/channels/telegram';
 import { createServiceClient } from '@/lib/supabase/server';
 import crypto from 'crypto';
@@ -275,9 +275,6 @@ async function processWhatsAppMessage(
   }
 
   try {
-    // React to the user's message with ⏳ — visible processing indicator
-    sendWhatsAppReaction(phone, messageId, '⏳').catch(() => {});
-
     // Process through conversation service (AI intake)
     const result = await processMessage(phone, text);
 
@@ -286,9 +283,6 @@ async function processWhatsAppMessage(
       intentId: result.intentId,
       responseLength: result.response.length,
     });
-
-    // Remove ⏳ reaction now that response is ready
-    sendWhatsAppReaction(phone, messageId, '').catch(() => {});
 
     // Send actual response back to user via WhatsApp
     const sendResult = await sendWhatsAppReply(phone, result.response);

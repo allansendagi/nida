@@ -9,7 +9,8 @@ import type { IntentData } from '@/types/nomos';
  */
 export async function notifyAdminNoProviders(
   intentId: string,
-  intentData: IntentData
+  intentData: IntentData,
+  consumerPhone?: string
 ): Promise<void> {
   const adminChatId = process.env.ADMIN_TELEGRAM_CHAT_ID;
   if (!adminChatId) {
@@ -17,20 +18,51 @@ export async function notifyAdminNoProviders(
     return;
   }
 
-  const category = intentData.category?.replace(/\./g, ' › ') || 'Unknown';
+  const appUrl = process.env.NEXT_PUBLIC_URL || 'https://nida-sigma.vercel.app';
+  const category = intentData.category?.split('.').pop()?.replace(/_/g, ' ') || 'Unknown service';
+  const categoryFull = intentData.category?.replace(/\./g, ' › ') || category;
   const zone = intentData.location?.zone?.replace(/_/g, ' ') || 'Unknown zone';
   const urgency = intentData.urgency || 'unknown';
+  const budget = intentData.budget
+    ? `${intentData.budget.min ?? '?'}–${intentData.budget.max ?? '?'} ${intentData.budget.currency ?? 'QAR'}`
+    : 'Not specified';
 
   const message =
-    `⚠️ <b>No Providers Found</b>\n\n` +
-    `A consumer request went unmatched:\n` +
-    `📋 Category: <b>${category}</b>\n` +
+    `🚨 <b>UNMATCHED REQUEST — Action Needed</b>\n\n` +
+    `A consumer needs <b>${category}</b> but we have no provider in their area.\n\n` +
+    `📋 Service: <b>${categoryFull}</b>\n` +
     `📍 Zone: <b>${zone}</b>\n` +
-    `⚡ Urgency: ${urgency}\n\n` +
-    `Intent ID: <code>${intentId}</code>\n\n` +
-    `Approve a provider in this zone/category to trigger an automatic consumer re-alert.`;
+    `⚡ Urgency: <b>${urgency}</b>\n` +
+    `💰 Budget: ${budget}\n` +
+    (consumerPhone ? `📞 Consumer: <code>${consumerPhone}</code>\n` : '') +
+    `\n` +
+    `<b>What to do:</b>\n` +
+    `1. Find a provider for ${zone} / ${category}\n` +
+    `2. Register them: ${appUrl}/admin/businesses\n` +
+    `3. Approve them — consumer will be auto-notified\n\n` +
+    `👉 <a href="${appUrl}/admin/intents">View all unmatched requests</a>`;
 
-  await sendTelegramReply(adminChatId, message);
+  const botToken = process.env.TELEGRAM_BOT_TOKEN;
+  if (botToken) {
+    await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: AbortSignal.timeout(8000),
+      body: JSON.stringify({
+        chat_id: adminChatId,
+        text: message,
+        parse_mode: 'HTML',
+        reply_markup: {
+          inline_keyboard: [[
+            { text: '📋 View Unmatched Requests', url: `${appUrl}/admin/intents` },
+            { text: '➕ Add Provider', url: `${appUrl}/admin/businesses` },
+          ]],
+        },
+      }),
+    }).catch(() => sendTelegramReply(adminChatId, message));
+  } else {
+    await sendTelegramReply(adminChatId, message);
+  }
 }
 
 /**
@@ -166,30 +198,40 @@ export async function notifyConsumerEscalating(consumerId: string, nextRank?: nu
  * Notify a consumer that no providers were found for their request,
  * with a promise to alert them when one becomes available.
  */
-export async function notifyConsumerNoProviders(consumerId: string, _intentId: string): Promise<void> {
+export async function notifyConsumerNoProviders(consumerId: string, intentId: string): Promise<void> {
   const supabase = createServiceClient();
 
   try {
-    const { data: consumer } = await supabase
-      .from('consumers')
-      .select('*')
-      .eq('id', consumerId)
-      .single();
+    const [{ data: consumer }, { data: intent }] = await Promise.all([
+      supabase.from('consumers').select('*').eq('id', consumerId).single(),
+      supabase.from('intents').select('intent_data').eq('id', intentId).single(),
+    ]);
 
     if (!consumer) return;
 
-    const message =
-      `😔 We couldn't find a matching provider right now.\n\n` +
-      `We've saved your request and will notify you the moment someone becomes available in your area.\n\n` +
-      `You don't need to do anything — just sit tight!`;
+    const intentData = intent?.intent_data as IntentData | null;
+    const category = intentData?.category?.split('.').pop()?.replace(/_/g, ' ') || 'service';
+    const zone = intentData?.location?.zone?.replace(/_/g, ' ') || 'your area';
+
+    const telegramMessage =
+      `🔍 <b>On it — sourcing manually</b>\n\n` +
+      `We don't have a verified provider for <b>${category}</b> in <b>${zone}</b> right now.\n\n` +
+      `Our team has been alerted and is personally finding someone for you. You'll get a notification the moment we confirm a match — usually within the hour.\n\n` +
+      `No action needed from you. We've got this. 💪`;
+
+    const whatsappMessage =
+      `🔍 On it — sourcing manually\n\n` +
+      `We don't have a verified provider for ${category} in ${zone} right now.\n\n` +
+      `Our team has been alerted and is personally finding someone for you. You'll hear from us the moment we confirm — usually within the hour.\n\n` +
+      `No action needed from you. We've got this 💪`;
 
     const telegramChatId = consumer.telegram_chat_id ||
       (consumer.phone?.startsWith('tg:') ? consumer.phone.slice(3) : null);
 
     if (telegramChatId) {
-      await sendTelegramReply(telegramChatId, message);
+      await sendTelegramReply(telegramChatId, telegramMessage);
     } else if (consumer.phone && !consumer.phone.startsWith('tg:')) {
-      await sendWhatsAppReply(consumer.phone, message);
+      await sendWhatsAppReply(consumer.phone, whatsappMessage);
     }
   } catch (error) {
     console.error('notifyConsumerNoProviders error:', error);
