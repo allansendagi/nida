@@ -90,7 +90,7 @@ export function ProfileEditor({ business }: ProfileEditorProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ dates: blockedDates }),
       });
-    } catch (_) {
+    } catch {
       // ignore
     } finally {
       setDatesSaving(false);
