@@ -91,7 +91,7 @@ export function NomosProtocol() {
               <div className="rounded-xl bg-white/5 border border-white/[0.08] p-3">
                 <p className="text-[10px] uppercase tracking-wider text-white/30 mb-1.5">Consumer request</p>
                 <p className="text-sm text-white/70 leading-snug">
-                  "Need AC repair in West Bay today — it's broken"
+                  &ldquo;Need AC repair in West Bay today &mdash; it&apos;s broken&rdquo;
                 </p>
               </div>
 
