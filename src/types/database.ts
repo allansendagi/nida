@@ -37,7 +37,7 @@ export interface ServiceCategory {
 // Sequential Dispatch Types
 // =============================================================================
 
-export type OfferState = 'pending' | 'offered' | 'accepted' | 'rejected' | 'expired' | 'cancelled';
+export type OfferState = 'pending' | 'offered' | 'accepted' | 'rejected' | 'expired' | 'cancelled' | 'dismissed';
 
 // =============================================================================
 // Database Row Types
