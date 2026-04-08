@@ -82,12 +82,15 @@ export async function getOrCreateConsumer(identifier: string): Promise<Consumer>
   }
 
   // Regular phone number flow (WhatsApp, etc.)
-  // Try to find existing consumer by phone
-  const { data: existing } = await supabase
+  // Use limit(1) instead of .single() to safely handle duplicate consumer rows
+  const { data: existingRows } = await supabase
     .from('consumers')
     .select('*')
     .eq('phone', identifier)
-    .single();
+    .order('created_at', { ascending: true })
+    .limit(1);
+
+  const existing = existingRows?.[0] ?? null;
 
   if (existing) {
     return existing as Consumer;
@@ -249,18 +252,28 @@ export async function processMessage(
 
     const messages = (updatedConv.messages as ConversationMessage[]) || [];
 
+    // Find all consumer IDs for this phone (duplicates can exist)
+    const { data: allConsumers } = await supabase
+      .from('consumers')
+      .select('id')
+      .eq('phone', phone);
+    const allConsumerIds = (allConsumers ?? []).map(c => c.id);
+    if (!allConsumerIds.includes(updatedConv.consumer_id)) {
+      allConsumerIds.push(updatedConv.consumer_id);
+    }
+
     // If consumer already has an active request, don't run AI intake —
     // return a real status response instead of letting the AI hallucinate actions
     const { data: activeIntent, error: activeIntentError } = await supabase
       .from('intents')
       .select('id, status, intent_data')
-      .eq('consumer_id', updatedConv.consumer_id)
+      .in('consumer_id', allConsumerIds)
       .in('status', ['structured', 'matching', 'executing'])
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
 
-    console.log(`[processMessage] consumer_id=${updatedConv.consumer_id} phone=${phone} activeIntent=${activeIntent?.id ?? 'none'} status=${activeIntent?.status ?? 'n/a'} err=${activeIntentError?.message ?? 'none'}`);
+    console.log(`[processMessage] consumer_ids=${allConsumerIds.join(',')} phone=${phone} activeIntent=${activeIntent?.id ?? 'none'} status=${activeIntent?.status ?? 'n/a'} err=${activeIntentError?.message ?? 'none'}`);
 
     if (activeIntent) {
       const category = (activeIntent.intent_data?.category as string)?.split('.').pop()?.replace(/_/g, ' ') || 'your request';
@@ -279,7 +292,7 @@ export async function processMessage(
     const { data: recentlyCancelled } = await supabase
       .from('intents')
       .select('id, status, intent_data')
-      .eq('consumer_id', updatedConv.consumer_id)
+      .in('consumer_id', allConsumerIds)
       .in('status', ['cancelled', 'no_providers'])
       .gte('created_at', fiveMinutesAgo)
       .order('created_at', { ascending: false })

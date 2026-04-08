@@ -120,28 +120,30 @@ export async function POST(request: Request) {
 async function handleWhatsAppCancel(phone: string): Promise<void> {
   const supabase = createServiceClient();
 
-  // Find consumer by phone
-  const { data: consumer } = await supabase
+  // Find ALL consumers with this phone — duplicate records can exist if .single() ever
+  // errored during consumer creation, causing multiple rows for the same phone number
+  const { data: consumers } = await supabase
     .from('consumers')
     .select('id')
-    .eq('phone', phone)
-    .maybeSingle();
+    .eq('phone', phone);
 
-  if (!consumer) {
+  if (!consumers || consumers.length === 0) {
     await sendWhatsAppReply(phone, "No active request found to cancel.");
     return;
   }
 
-  // Find ALL non-terminal intents for this consumer (not just the most recent)
-  // Multiple stuck intents can accumulate due to retries — cancel all at once
+  const consumerIds = consumers.map(c => c.id);
+  console.log(`[handleWhatsAppCancel] phone=${phone} consumers=${consumerIds.join(',')}`);
+
+  // Find ALL non-terminal intents across ALL consumer records for this phone
   const { data: intents } = await supabase
     .from('intents')
     .select('id, status')
-    .eq('consumer_id', consumer.id)
+    .in('consumer_id', consumerIds)
     .not('status', 'in', '("cancelled","settled","no_providers")')
     .order('created_at', { ascending: false });
 
-  console.log(`[handleWhatsAppCancel] phone=${phone} consumer_id=${consumer.id} found=${intents?.length ?? 0} intents:`, intents?.map(i => `${i.id}(${i.status})`).join(','));
+  console.log(`[handleWhatsAppCancel] phone=${phone} found=${intents?.length ?? 0} intents:`, intents?.map(i => `${i.id}(${i.status})`).join(','));
 
   if (!intents || intents.length === 0) {
     await sendWhatsAppReply(phone, "No active request found to cancel.");
@@ -187,12 +189,11 @@ async function handleWhatsAppCancel(phone: string): Promise<void> {
     }
   }
 
-  // Close all open conversations so the next message starts with clean context.
-  // Without this, the AI sees the old request in conversation history and recreates the intent.
+  // Close all open conversations across ALL consumer records for this phone
   await supabase
     .from('conversations')
     .update({ state: 'complete' })
-    .eq('consumer_id', consumer.id)
+    .in('consumer_id', consumerIds)
     .neq('state', 'complete');
 
   const msg = anyExecuting
