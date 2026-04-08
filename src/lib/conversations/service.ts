@@ -264,7 +264,7 @@ export async function processMessage(
 
     // If consumer already has an active request, don't run AI intake —
     // return a real status response instead of letting the AI hallucinate actions
-    const { data: activeIntent, error: activeIntentError } = await supabase
+    const { data: activeIntentRaw, error: activeIntentError } = await supabase
       .from('intents')
       .select('id, status, intent_data')
       .in('consumer_id', allConsumerIds)
@@ -273,7 +273,48 @@ export async function processMessage(
       .limit(1)
       .maybeSingle();
 
-    console.log(`[processMessage] consumer_ids=${allConsumerIds.join(',')} phone=${phone} activeIntent=${activeIntent?.id ?? 'none'} status=${activeIntent?.status ?? 'n/a'} err=${activeIntentError?.message ?? 'none'}`);
+    console.log(`[processMessage] consumer_ids=${allConsumerIds.join(',')} phone=${phone} activeIntent=${activeIntentRaw?.id ?? 'none'} status=${activeIntentRaw?.status ?? 'n/a'} err=${activeIntentError?.message ?? 'none'}`);
+
+    // Self-heal stale intents: an 'executing' intent with no confirmed execution is a ghost
+    // left by a cancelled job. Auto-cancel it so the consumer can start fresh.
+    let activeIntent = activeIntentRaw;
+    if (activeIntentRaw?.status === 'executing') {
+      // Step 1: find accepted negotiations for this intent
+      const { data: acceptedNegs } = await supabase
+        .from('negotiations')
+        .select('id')
+        .eq('intent_id', activeIntentRaw.id)
+        .eq('offer_state', 'accepted');
+      const negIds = (acceptedNegs ?? []).map(n => n.id);
+
+      // Step 2: check if any confirmed execution exists
+      const { data: liveExecution } = negIds.length > 0
+        ? await supabase
+            .from('executions')
+            .select('id')
+            .in('negotiation_id', negIds)
+            .eq('status', 'confirmed')
+            .limit(1)
+            .maybeSingle()
+        : { data: null };
+
+      if (!liveExecution) {
+        console.log(`[processMessage] Auto-cancelling stale executing intent ${activeIntentRaw.id} (no live execution)`);
+        await supabase.from('intents').update({ status: 'cancelled' }).eq('id', activeIntentRaw.id);
+        activeIntent = null;
+      }
+    }
+
+    // Similarly, auto-cancel 'structured' intents older than 10 minutes (matching timed out or failed)
+    if (activeIntentRaw?.status === 'structured') {
+      const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+      const createdAt = (activeIntentRaw as { created_at?: string }).created_at;
+      if (createdAt && createdAt < tenMinutesAgo) {
+        console.log(`[processMessage] Auto-cancelling stale structured intent ${activeIntentRaw.id}`);
+        await supabase.from('intents').update({ status: 'cancelled' }).eq('id', activeIntentRaw.id);
+        activeIntent = null;
+      }
+    }
 
     if (activeIntent) {
       const category = (activeIntent.intent_data?.category as string)?.split('.').pop()?.replace(/_/g, ' ') || 'your request';
