@@ -48,6 +48,7 @@ const offerStateMessages: Record<OfferState, string> = {
   rejected: 'You rejected this lead.',
   expired: 'Your offer window expired.',
   cancelled: 'This lead was cancelled.',
+  dismissed: 'This lead has been dismissed.',
 };
 
 const urgencyColors: Record<string, string> = {
