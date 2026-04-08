@@ -481,7 +481,7 @@ async function completeConversation(
   // Update intent status
   await supabase
     .from('intents')
-    .update({ status: matches.length > 0 ? 'matching' : 'structured' })
+    .update({ status: matches.length > 0 ? 'matching' : 'no_providers' })
     .eq('id', intent.id);
 
   // Start sequential dispatch (notifies rank #1)

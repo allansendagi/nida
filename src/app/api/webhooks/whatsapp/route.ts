@@ -136,7 +136,7 @@ async function handleWhatsAppCancel(phone: string): Promise<void> {
     .from('intents')
     .select('id, status')
     .eq('consumer_id', consumer.id)
-    .not('status', 'in', '("cancelled","settled")')
+    .not('status', 'in', '("cancelled","settled","no_providers")')
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();
