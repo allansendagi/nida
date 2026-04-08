@@ -251,7 +251,7 @@ export async function processMessage(
 
     // If consumer already has an active request, don't run AI intake —
     // return a real status response instead of letting the AI hallucinate actions
-    const { data: activeIntent } = await supabase
+    const { data: activeIntent, error: activeIntentError } = await supabase
       .from('intents')
       .select('id, status, intent_data')
       .eq('consumer_id', updatedConv.consumer_id)
@@ -259,6 +259,8 @@ export async function processMessage(
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
+
+    console.log(`[processMessage] consumer_id=${updatedConv.consumer_id} phone=${phone} activeIntent=${activeIntent?.id ?? 'none'} status=${activeIntent?.status ?? 'n/a'} err=${activeIntentError?.message ?? 'none'}`);
 
     if (activeIntent) {
       const category = (activeIntent.intent_data?.category as string)?.split('.').pop()?.replace(/_/g, ' ') || 'your request';

@@ -141,6 +141,8 @@ async function handleWhatsAppCancel(phone: string): Promise<void> {
     .not('status', 'in', '("cancelled","settled","no_providers")')
     .order('created_at', { ascending: false });
 
+  console.log(`[handleWhatsAppCancel] phone=${phone} consumer_id=${consumer.id} found=${intents?.length ?? 0} intents:`, intents?.map(i => `${i.id}(${i.status})`).join(','));
+
   if (!intents || intents.length === 0) {
     await sendWhatsAppReply(phone, "No active request found to cancel.");
     return;
@@ -153,7 +155,8 @@ async function handleWhatsAppCancel(phone: string): Promise<void> {
     if (wasExecuting) anyExecuting = true;
 
     // Cancel intent and all pending/offered negotiations
-    await supabase.from('intents').update({ status: 'cancelled' }).eq('id', intent.id);
+    const { error: cancelErr } = await supabase.from('intents').update({ status: 'cancelled' }).eq('id', intent.id);
+    console.log(`[handleWhatsAppCancel] cancelled intent ${intent.id}: err=${cancelErr?.message ?? 'none'}`);
     await supabase.from('negotiations')
       .update({ offer_state: 'cancelled' })
       .eq('intent_id', intent.id)
