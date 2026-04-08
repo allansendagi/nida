@@ -848,6 +848,14 @@ async function handleCancelCallback(
     }
   }
 
+  // Close all open conversations so the next message starts with clean context.
+  // Without this, the AI sees the old request in conversation history and recreates the intent.
+  await supabase
+    .from('conversations')
+    .update({ state: 'complete' })
+    .eq('consumer_id', consumer.id)
+    .neq('state', 'complete');
+
   const confirmText = wasAccepted
     ? '❌ <b>Request cancelled.</b>\n\nThe provider has been notified. No worries — send a new message whenever you need help!'
     : '❌ <b>Request cancelled.</b>\n\nYour request has been cancelled. Send a new message whenever you need help!';

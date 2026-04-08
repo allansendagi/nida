@@ -184,6 +184,14 @@ async function handleWhatsAppCancel(phone: string): Promise<void> {
     }
   }
 
+  // Close all open conversations so the next message starts with clean context.
+  // Without this, the AI sees the old request in conversation history and recreates the intent.
+  await supabase
+    .from('conversations')
+    .update({ state: 'complete' })
+    .eq('consumer_id', consumer.id)
+    .neq('state', 'complete');
+
   const msg = anyExecuting
     ? "❌ Your request has been cancelled. The provider has been notified. Send a new message anytime to start fresh!"
     : "❌ Your request has been cancelled. Send a new message anytime to start fresh!";
