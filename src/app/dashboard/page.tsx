@@ -130,6 +130,7 @@ export default async function DashboardPage() {
     .from('lead_view')
     .select('*')
     .eq('business_id', business.id)
+    .neq('offer_state', 'dismissed')
     .order('created_at', { ascending: false });
 
   const hour = new Date().getHours();

@@ -11,11 +11,12 @@ interface LeadFeedProps {
 }
 
 export function LeadFeed({ initialLeads, businessId }: LeadFeedProps) {
-  const [leads, setLeads] = useState<LeadView[]>(initialLeads);
+  const [leads, setLeads] = useState<LeadView[]>(
+    initialLeads.filter(l => l.offer_state !== 'dismissed')
+  );
   const supabase = createClient();
 
   useEffect(() => {
-    // Subscribe to realtime updates
     const channel = supabase
       .channel('lead-updates')
       .on(
@@ -27,7 +28,6 @@ export function LeadFeed({ initialLeads, businessId }: LeadFeedProps) {
           filter: `business_id=eq.${businessId}`,
         },
         async () => {
-          // Refetch leads when there's a change
           const { data } = await supabase
             .from('lead_view')
             .select('*')
@@ -35,16 +35,22 @@ export function LeadFeed({ initialLeads, businessId }: LeadFeedProps) {
             .order('created_at', { ascending: false });
 
           if (data) {
-            setLeads(data);
+            setLeads(data.filter(l => l.offer_state !== 'dismissed'));
           }
         }
       )
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, [businessId, supabase]);
+
+  const handleDismiss = (id: string) => {
+    setLeads(prev => prev.filter(l => l.id !== id));
+  };
+
+  const TERMINAL = ['cancelled', 'expired', 'rejected'];
+  const activeLeads = leads.filter(l => !TERMINAL.includes(l.offer_state));
+  const terminalLeads = leads.filter(l => TERMINAL.includes(l.offer_state));
 
   if (leads.length === 0) {
     return (
@@ -63,10 +69,33 @@ export function LeadFeed({ initialLeads, businessId }: LeadFeedProps) {
   }
 
   return (
-    <div className="space-y-4">
-      {leads.map((lead) => (
-        <LeadCard key={lead.id} lead={lead} />
-      ))}
+    <div className="space-y-6">
+      {/* Active leads */}
+      {activeLeads.length > 0 && (
+        <div className="space-y-3">
+          {activeLeads.map(lead => (
+            <LeadCard key={lead.id} lead={lead} businessId={businessId} onDismiss={handleDismiss} />
+          ))}
+        </div>
+      )}
+
+      {/* Terminal leads — cancelled, expired, rejected */}
+      {terminalLeads.length > 0 && (
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <div className="flex-1 h-px bg-gray-200" />
+            <span className="text-xs text-gray-400 font-medium uppercase tracking-wide">
+              Closed · {terminalLeads.length}
+            </span>
+            <div className="flex-1 h-px bg-gray-200" />
+          </div>
+          <div className="space-y-2">
+            {terminalLeads.map(lead => (
+              <LeadCard key={lead.id} lead={lead} businessId={businessId} onDismiss={handleDismiss} />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -266,7 +266,7 @@ export async function processMessage(
     // return a real status response instead of letting the AI hallucinate actions
     const { data: activeIntentRaw, error: activeIntentError } = await supabase
       .from('intents')
-      .select('id, status, intent_data')
+      .select('id, status, intent_data, created_at')
       .in('consumer_id', allConsumerIds)
       .in('status', ['structured', 'matching', 'executing'])
       .order('created_at', { ascending: false })
@@ -305,12 +305,12 @@ export async function processMessage(
       }
     }
 
-    // Similarly, auto-cancel 'structured' intents older than 10 minutes (matching timed out or failed)
+    // Similarly, auto-cancel 'structured' intents older than 2 minutes (matching timed out or failed)
     if (activeIntentRaw?.status === 'structured') {
-      const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+      const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString();
       const createdAt = (activeIntentRaw as { created_at?: string }).created_at;
-      if (createdAt && createdAt < tenMinutesAgo) {
-        console.log(`[processMessage] Auto-cancelling stale structured intent ${activeIntentRaw.id}`);
+      if (createdAt && createdAt < twoMinutesAgo) {
+        console.log(`[processMessage] Auto-cancelling stale structured intent ${activeIntentRaw.id} (created ${createdAt})`);
         await supabase.from('intents').update({ status: 'cancelled' }).eq('id', activeIntentRaw.id);
         activeIntent = null;
       }
