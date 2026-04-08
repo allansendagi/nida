@@ -3,6 +3,7 @@ import { processMessage } from '@/lib/conversations/service';
 import { sendWhatsAppReply, sendWhatsAppReaction, markWhatsAppMessageRead } from '@/lib/notifications/channels/whatsapp';
 import { sendTelegramReply } from '@/lib/notifications/channels/telegram';
 import { createServiceClient } from '@/lib/supabase/server';
+import { getRedis } from '@/lib/redis';
 import crypto from 'crypto';
 
 /**
@@ -131,55 +132,59 @@ async function handleWhatsAppCancel(phone: string): Promise<void> {
     return;
   }
 
-  // Find any non-terminal intent for this consumer
-  const { data: intent } = await supabase
+  // Find ALL non-terminal intents for this consumer (not just the most recent)
+  // Multiple stuck intents can accumulate due to retries — cancel all at once
+  const { data: intents } = await supabase
     .from('intents')
     .select('id, status')
     .eq('consumer_id', consumer.id)
     .not('status', 'in', '("cancelled","settled","no_providers")')
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .order('created_at', { ascending: false });
 
-  if (!intent) {
+  if (!intents || intents.length === 0) {
     await sendWhatsAppReply(phone, "No active request found to cancel.");
     return;
   }
 
-  const wasExecuting = intent.status === 'executing';
+  let anyExecuting = false;
 
-  // Cancel intent and all pending/offered negotiations
-  await supabase.from('intents').update({ status: 'cancelled' }).eq('id', intent.id);
-  await supabase.from('negotiations')
-    .update({ offer_state: 'cancelled' })
-    .eq('intent_id', intent.id)
-    .in('offer_state', ['pending', 'offered', 'accepted']);
+  for (const intent of intents) {
+    const wasExecuting = intent.status === 'executing';
+    if (wasExecuting) anyExecuting = true;
 
-  // Cancel executions and notify the business provider
-  if (wasExecuting) {
-    const { data: executions } = await supabase
-      .from('executions')
-      .select('id, negotiation:negotiations!inner(business_id, businesses(telegram_chat_id, display_name))')
-      .eq('negotiation.intent_id', intent.id)
-      .in('status', ['confirmed']);
+    // Cancel intent and all pending/offered negotiations
+    await supabase.from('intents').update({ status: 'cancelled' }).eq('id', intent.id);
+    await supabase.from('negotiations')
+      .update({ offer_state: 'cancelled' })
+      .eq('intent_id', intent.id)
+      .in('offer_state', ['pending', 'offered', 'accepted']);
 
-    for (const exec of executions ?? []) {
-      await supabase.from('executions').update({ status: 'cancelled' }).eq('id', exec.id);
+    // Cancel executions and notify the business provider
+    if (wasExecuting) {
+      const { data: executions } = await supabase
+        .from('executions')
+        .select('id, negotiation:negotiations!inner(business_id, businesses(telegram_chat_id, display_name))')
+        .eq('negotiation.intent_id', intent.id)
+        .in('status', ['confirmed']);
 
-      type ExecNeg = { business_id: string; businesses: { telegram_chat_id: string | null; display_name: string }[] | null };
-      const neg = exec.negotiation as unknown as ExecNeg | null;
-      const bizChatId = neg?.businesses?.[0]?.telegram_chat_id;
-      const bizName = neg?.businesses?.[0]?.display_name || 'Provider';
+      for (const exec of executions ?? []) {
+        await supabase.from('executions').update({ status: 'cancelled' }).eq('id', exec.id);
 
-      if (bizChatId) {
-        await sendTelegramReply(bizChatId,
-          `ℹ️ <b>Job cancelled by customer</b>\n\nThe customer has cancelled their request. No action needed from you.\n\nThank you, ${bizName} — we'll keep sending you new leads!`
-        ).catch(() => {});
+        type ExecNeg = { business_id: string; businesses: { telegram_chat_id: string | null; display_name: string }[] | null };
+        const neg = exec.negotiation as unknown as ExecNeg | null;
+        const bizChatId = neg?.businesses?.[0]?.telegram_chat_id;
+        const bizName = neg?.businesses?.[0]?.display_name || 'Provider';
+
+        if (bizChatId) {
+          await sendTelegramReply(bizChatId,
+            `ℹ️ <b>Job cancelled by customer</b>\n\nThe customer has cancelled their request. No action needed from you.\n\nThank you, ${bizName} — we'll keep sending you new leads!`
+          ).catch(() => {});
+        }
       }
     }
   }
 
-  const msg = wasExecuting
+  const msg = anyExecuting
     ? "❌ Your request has been cancelled. The provider has been notified. Send a new message anytime to start fresh!"
     : "❌ Your request has been cancelled. Send a new message anytime to start fresh!";
 
@@ -242,6 +247,19 @@ async function processWhatsAppMessage(
   messageId: string
 ): Promise<void> {
   console.log(`Processing WhatsApp message ${messageId} from ${phone}`);
+
+  // Deduplicate: skip if we've already processed this exact message
+  // WhatsApp retries webhooks if the server doesn't respond in time, causing duplicate intents
+  const redis = getRedis();
+  if (redis && messageId) {
+    const dedupKey = `wa_msg:${phone}:${messageId}`;
+    const seen = await redis.get(dedupKey).catch(() => null);
+    if (seen) {
+      console.log(`Skipping duplicate WhatsApp message ${messageId} from ${phone}`);
+      return;
+    }
+    await redis.set(dedupKey, '1', { ex: 300 }).catch(() => {}); // 5 min TTL
+  }
 
   // Mark message as read immediately — sends blue double ticks (world-class live feel)
   markWhatsAppMessageRead(messageId).catch(() => {});
