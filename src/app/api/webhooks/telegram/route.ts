@@ -470,16 +470,9 @@ async function sendOptionalPhoneRequest(chatId: string): Promise<void> {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           chat_id: chatId,
-          text: "📞 <b>One quick thing</b> — want the provider to be able to call you directly?\n\nSharing your number means they can reach you by phone. You'll get updates here either way.",
+          text: "📞 <b>Optional:</b> Want the provider to call you directly?\n\nReply with your Qatar number (e.g. <code>+974 XXXX XXXX</code>) and we'll pass it on. Otherwise just ignore this — you'll still get all updates here on Telegram.",
           parse_mode: 'HTML',
-          reply_markup: {
-            keyboard: [
-              [{ text: '📱 Share my number', request_contact: true }],
-              [{ text: '💬 No thanks, use Telegram only' }],
-            ],
-            resize_keyboard: true,
-            one_time_keyboard: true,
-          },
+          reply_markup: { remove_keyboard: true },
         }),
       }
     );
@@ -792,23 +785,28 @@ async function handleCancelCallback(
 ): Promise<void> {
   const supabase = createServiceClient();
 
-  // Verify this intent belongs to this consumer
-  const { data: consumer } = await supabase
-    .from('consumers')
-    .select('id')
-    .eq('telegram_chat_id', chatId)
-    .maybeSingle();
+  // Collect ALL consumer IDs for this chat (handles legacy and duplicate records)
+  const consumerIds: string[] = [];
+  const { data: byTelegramRows } = await supabase
+    .from('consumers').select('id').eq('telegram_chat_id', chatId);
+  if (byTelegramRows?.length) consumerIds.push(...byTelegramRows.map(r => r.id));
+  if (consumerIds.length === 0) {
+    const { data: byLegacyRows } = await supabase
+      .from('consumers').select('id').eq('phone', `tg:${chatId}`).limit(5);
+    if (byLegacyRows?.length) consumerIds.push(...byLegacyRows.map(r => r.id));
+  }
 
-  if (!consumer) {
+  if (consumerIds.length === 0) {
     await telegramAdapter.answerCallbackQuery(callbackId, 'Could not verify identity', true);
     return;
   }
 
+  // Verify this intent belongs to one of this user's consumer records
   const { data: intent } = await supabase
     .from('intents')
     .select('id, status, consumer_id')
     .eq('id', intentId)
-    .eq('consumer_id', consumer.id)
+    .in('consumer_id', consumerIds)
     .maybeSingle();
 
   if (!intent) {
