@@ -149,8 +149,12 @@ async function handleMessage(message: TelegramMessage): Promise<void> {
 
   // Detect status queries — intercept before sending to AI
   const isCancelIntent = /\bcancel\b/i.test(text);
-  const statusPhrases = ['status', 'update', 'any news', 'what happened', 'my request',
-    'did anyone', 'found someone', 'still waiting'];
+  const statusPhrases = [
+    'status', 'update', 'any news', 'what happened', 'my request',
+    'did anyone', 'found someone', 'still waiting',
+    'requests', 'have any', 'do i have', 'any active', 'anything pending',
+    'do i have any', 'any requests', 'active request',
+  ];
   const isStatusQuery = isCancelIntent || statusPhrases.some(p => text.toLowerCase().includes(p));
 
   if (isStatusQuery) {
@@ -675,30 +679,33 @@ async function handleContactSharing(chatId: string, contact: TelegramContact): P
 async function handleStatusQuery(chatId: string, isCancelIntent = false): Promise<void> {
   const supabase = createServiceClient();
 
-  // Find consumer by telegram_chat_id, with fallback to legacy tg: phone format
-  let consumerId: string | null = null;
+  // Collect ALL consumer IDs for this chat — duplicate consumer rows exist when
+  // .single() errored during creation, causing multiple rows for the same chat.
+  // .maybeSingle() returns null if >1 row exists, so we must collect all IDs.
+  const consumerIds: string[] = [];
 
-  const { data: byTelegramId } = await supabase
-    .from('consumers').select('id').eq('telegram_chat_id', chatId).maybeSingle();
-  if (byTelegramId) {
-    consumerId = byTelegramId.id;
-  } else {
-    const { data: byLegacy } = await supabase
-      .from('consumers').select('id').eq('phone', `tg:${chatId}`).maybeSingle();
-    if (byLegacy) consumerId = byLegacy.id;
+  const { data: byTelegramRows } = await supabase
+    .from('consumers').select('id').eq('telegram_chat_id', chatId);
+  if (byTelegramRows?.length) consumerIds.push(...byTelegramRows.map(r => r.id));
+
+  // Legacy fallback: consumers created before the telegram_chat_id column was added
+  if (consumerIds.length === 0) {
+    const { data: byLegacyRows } = await supabase
+      .from('consumers').select('id').eq('phone', `tg:${chatId}`).limit(5);
+    if (byLegacyRows?.length) consumerIds.push(...byLegacyRows.map(r => r.id));
   }
 
-  if (!consumerId) {
+  if (consumerIds.length === 0) {
     await sendTelegramReply(chatId, "You don't have any active requests. Tell me what you need help with!");
     return;
   }
 
-  // Get most recent intent in the last 24h
+  // Get most recent intent in the last 24h across all consumer IDs
   const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
   const { data: intent } = await supabase
     .from('intents')
     .select('id, status, intent_data, created_at, negotiations(id, offer_state, offer_expires_at, businesses(display_name))')
-    .eq('consumer_id', consumerId)
+    .in('consumer_id', consumerIds)
     .gte('created_at', cutoff)
     .order('created_at', { ascending: false })
     .limit(1)

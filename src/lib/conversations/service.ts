@@ -329,13 +329,13 @@ export async function processMessage(
     }
 
     // If no active request but one was just cancelled/failed, acknowledge it before going to AI
-    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+    const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
     const { data: recentlyCancelled } = await supabase
       .from('intents')
       .select('id, status, intent_data')
       .in('consumer_id', allConsumerIds)
       .in('status', ['cancelled', 'no_providers'])
-      .gte('created_at', fiveMinutesAgo)
+      .gte('created_at', thirtyMinutesAgo)
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -347,6 +347,21 @@ export async function processMessage(
         : `We couldn't find an available provider for your ${category} request this time. Would you like to try again? Just describe what you need.`;
       await addMessageToConversation(conversation.id, 'assistant', msg);
       return { response: msg, intentCreated: false, conversationId: conversation.id };
+    }
+
+    // Gate: detect status queries before AI intake. The AI has no DB access
+    // and gives a generic greeting; we return a real DB-backed answer instead.
+    const STATUS_QUERY_PHRASES = [
+      'status', 'update', 'any news', 'what happened', 'my request',
+      'did anyone', 'found someone', 'still waiting',
+      'requests', 'have any', 'do i have', 'any active', 'anything pending',
+      'do i have any', 'any requests', 'active request',
+    ];
+    const lowerMsg = messageText.toLowerCase();
+    if (STATUS_QUERY_PHRASES.some(p => lowerMsg.includes(p))) {
+      const noRequestsMsg = "You don't have any active requests. Tell me what you need help with!";
+      await addMessageToConversation(conversation.id, 'assistant', noRequestsMsg);
+      return { response: noRequestsMsg, intentCreated: false, conversationId: conversation.id };
     }
 
     // Process through AI intake

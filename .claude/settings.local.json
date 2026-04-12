@@ -24,7 +24,10 @@
       "Bash(grep -n \"RatingSummary\\\\|consumer_rating\\\\|rating_status\\\\|rating_requested\" /Users/allansendagi/Desktop/nida/src/types/*.ts)",
       "Bash(xargs ls:*)",
       "Bash(grep -E \"\\\\.\\(ts|tsx\\)$\")",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(git -C /Users/allansendagi/Desktop/nida log --oneline --all --grep=\"cancelled\\\\|cancel\")",
+      "Bash(npx supabase:*)",
+      "Bash(ls:*)"
     ]
   }
 }

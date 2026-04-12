@@ -279,7 +279,8 @@ export type IntentStatus =
   | 'negotiating'
   | 'executing'
   | 'settled'
-  | 'no_providers';
+  | 'no_providers'
+  | 'cancelled';
 
 // =============================================================================
 // Service Categories
