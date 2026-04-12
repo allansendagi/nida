@@ -28,11 +28,15 @@ export async function getOrCreateConsumer(identifier: string): Promise<Consumer>
     const chatId = identifier.slice(3);
 
     // First, look for existing consumer by telegram_chat_id (new format)
-    const { data: existingByTelegram } = await supabase
+    // Use limit(1) + order to safely handle any duplicate rows
+    const { data: telegramRows } = await supabase
       .from('consumers')
       .select('*')
       .eq('telegram_chat_id', chatId)
-      .single();
+      .order('created_at', { ascending: true })
+      .limit(1);
+
+    const existingByTelegram = telegramRows?.[0] ?? null;
 
     if (existingByTelegram) {
       return existingByTelegram as Consumer;
@@ -40,11 +44,14 @@ export async function getOrCreateConsumer(identifier: string): Promise<Consumer>
 
     // Check for existing consumer by phone (old format: 'tg:chatId')
     // This handles consumers created before the telegram_chat_id field was used
-    const { data: existingByPhone } = await supabase
+    const { data: phoneRows } = await supabase
       .from('consumers')
       .select('*')
       .eq('phone', identifier)
-      .single();
+      .order('created_at', { ascending: true })
+      .limit(1);
+
+    const existingByPhone = phoneRows?.[0] ?? null;
 
     if (existingByPhone) {
       // Migrate: update to set telegram_chat_id
@@ -312,6 +319,19 @@ export async function processMessage(
       if (createdAt && createdAt < twoMinutesAgo) {
         console.log(`[processMessage] Auto-cancelling stale structured intent ${activeIntentRaw.id} (created ${createdAt})`);
         await supabase.from('intents').update({ status: 'cancelled' }).eq('id', activeIntentRaw.id);
+        activeIntent = null;
+      }
+    }
+
+    // Auto-cancel 'matching' intents older than 15 minutes — the dispatch cron runs every
+    // few minutes so a job still in 'matching' after 15 min means the cron failed or
+    // all providers rejected/timed out without the status being updated.
+    if (activeIntentRaw?.status === 'matching') {
+      const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+      const createdAt = (activeIntentRaw as { created_at?: string }).created_at;
+      if (createdAt && createdAt < fifteenMinutesAgo) {
+        console.log(`[processMessage] Auto-cancelling stale matching intent ${activeIntentRaw.id} (created ${createdAt})`);
+        await supabase.from('intents').update({ status: 'no_providers' }).eq('id', activeIntentRaw.id);
         activeIntent = null;
       }
     }

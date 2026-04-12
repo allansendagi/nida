@@ -180,6 +180,7 @@ export async function sendWhatsAppReaction(
       'Authorization': `Bearer ${accessToken}`,
       'Content-Type': 'application/json',
     },
+    signal: AbortSignal.timeout(8000),
     body: JSON.stringify({
       messaging_product: 'whatsapp',
       recipient_type: 'individual',
@@ -210,6 +211,7 @@ export async function sendWhatsAppRatingRequest(
       'Authorization': `Bearer ${accessToken}`,
       'Content-Type': 'application/json',
     },
+    signal: AbortSignal.timeout(8000),
     body: JSON.stringify({
       messaging_product: 'whatsapp',
       recipient_type: 'individual',
@@ -267,12 +269,13 @@ export async function sendWhatsAppReply(phone: string, message: string): Promise
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
         },
+        signal: AbortSignal.timeout(8000),
         body: JSON.stringify({
           messaging_product: 'whatsapp',
           recipient_type: 'individual',
           to: formattedPhone,
           type: 'text',
-          text: { body: message },
+          text: { body: message.slice(0, 4096) },
         }),
       }
     );

@@ -58,10 +58,10 @@ export async function POST(request: Request) {
     const rawBody = await request.text();
     const signature = request.headers.get('x-hub-signature-256');
 
-    // Verify signature
+    // Verify signature — return 200 even on failure so WhatsApp doesn't retry
     if (!verifySignature(rawBody, signature)) {
-      console.error('Invalid WhatsApp webhook signature');
-      return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+      console.error('Invalid WhatsApp webhook signature — dropping request');
+      return NextResponse.json({ ok: true }, { status: 200 });
     }
 
     const body = JSON.parse(rawBody);
@@ -317,8 +317,8 @@ async function processWhatsAppMessage(
       responseLength: result.response.length,
     });
 
-    // Swap ⏳ → ✅ — persistent confirmation that their message was handled
-    sendWhatsAppReaction(phone, messageId, '✅').catch(() => {});
+    // Remove the ⏳ reaction once processing is done
+    sendWhatsAppReaction(phone, messageId, '').catch(() => {});
 
     // Send actual response back to user via WhatsApp
     const sendResult = await sendWhatsAppReply(phone, result.response);

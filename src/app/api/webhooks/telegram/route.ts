@@ -470,9 +470,16 @@ async function sendOptionalPhoneRequest(chatId: string): Promise<void> {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           chat_id: chatId,
-          text: "📞 <b>Optional:</b> Want the provider to call you directly?\n\nReply with your Qatar number (e.g. <code>+974 XXXX XXXX</code>) and we'll pass it on. Otherwise just ignore this — you'll still get all updates here on Telegram.",
+          text: "📞 <b>One quick thing</b> — want the provider to be able to call you directly?\n\nSharing your number means they can reach you by phone. You'll get updates here either way.",
           parse_mode: 'HTML',
-          reply_markup: { remove_keyboard: true },
+          reply_markup: {
+            keyboard: [
+              [{ text: '📱 Share my number', request_contact: true }],
+              [{ text: '💬 No thanks, use Telegram only' }],
+            ],
+            resize_keyboard: true,
+            one_time_keyboard: true,
+          },
         }),
       }
     );
